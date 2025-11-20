@@ -2632,7 +2632,22 @@ namespace LChart_Comparison_Tool
                     (Excel.XlLineStyle)rightCell.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle
                     != Excel.XlLineStyle.xlLineStyleNone;
 
-                if (leftHasTopBorder && rightHasTopBorder) 
+                bool leftHasRightBorder =
+                    (Excel.XlLineStyle)leftCell.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                bool rightHasLeftBorder =
+                    (Excel.XlLineStyle)rightCell.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                if (!leftHasRightBorder && !rightHasLeftBorder)
+                {
+                    return (leftHasTopBorder, rightHasTopBorder, r,
+                            leftCell, rightCell,
+                            false, false, null, null, false, null);
+                }
+
+                if (leftHasTopBorder && rightHasTopBorder)
                 {
                     Excel.Range leftAboveCell = leftCell.Offset[-2, 0];
                     Excel.Range rightAboveCell = rightCell.Offset[-2, 0];
