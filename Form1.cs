@@ -59,6 +59,11 @@ namespace LChart_Comparison_Tool
 {
     public partial class Form1 : Form
     {
+        List<Excel.Range> navigateLeft = new List<Excel.Range>();
+        List<Excel.Range> navigateRight = new List<Excel.Range>();
+        List<Excel.Range> navigateUp = new List<Excel.Range>();
+        List<Excel.Range> navigateDown = new List<Excel.Range>();
+
         public Form1()
         {
             InitializeComponent();
@@ -2627,8 +2632,7 @@ namespace LChart_Comparison_Tool
                     (Excel.XlLineStyle)rightCell.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle
                     != Excel.XlLineStyle.xlLineStyleNone;
 
-                // Stop if ANY cell has a top border
-                if (leftHasTopBorder || rightHasTopBorder)
+                if (leftHasTopBorder && rightHasTopBorder) 
                 {
                     Excel.Range leftAboveCell = leftCell.Offset[-2, 0];
                     Excel.Range rightAboveCell = rightCell.Offset[-2, 0];
@@ -2655,21 +2659,74 @@ namespace LChart_Comparison_Tool
                             leftCell, rightCell,
                             leftIsMerged, rightIsMerged, leftMergedArea, rightMergedArea, leftHasTopBorder == rightHasTopBorder == true, parentCell);
                 }
-
+                else if (leftHasTopBorder)
+                {
+                    navigateLeft.Add(leftCell);
+                }
+                else if (rightHasTopBorder)
+                {
+                    navigateRight.Add(rightCell);
+                }
                 r--; // move UP
             }
 
             return (false, false, r, null, null, false, false, null, null, false, null);
         }
 
-        public void moveLeft(int row, int column, Worksheet ews)
+        public void moveLeft(int row, int column, Worksheet ews, Excel.Range startCell)
         {
+            Excel.Range current = startCell;  // the top-border cell from your UP navigation
 
+            while (true)
+            {
+                // Borders of current cell
+                bool hasLeftBorder =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                bool hasBottomBorder =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                // STOP: no bottom border → parent block ended on the left side
+                if (!hasBottomBorder)
+                    break;
+
+                // SAVE: has BOTH left and bottom borders
+                if (hasLeftBorder && hasBottomBorder)
+                    navigateUp.Add(current);
+
+                // MOVE LEFT
+                current = current.Offset[0, -1];
+            }
         }
 
-        public void moveRight(int row, int column, Worksheet ews)
+        public void moveRight(int row, int column, Worksheet ews, Excel.Range startCell)
         {
+            Excel.Range current = startCell;  // the cell where you found the top border
 
+            while (true)
+            {
+                // Borders of current cell
+                bool hasRightBorder =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                bool hasBottomBorder =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                // STOP condition: no bottom border
+                if (!hasBottomBorder)
+                    break;
+
+                // SAVE condition: cell has BOTH bottom AND right borders
+                if (hasRightBorder && hasBottomBorder)
+                    navigateUp.Add(current);
+
+                // MOVE RIGHT
+                current = current.Offset[0, 1];
+            }
         }
     }
 }
