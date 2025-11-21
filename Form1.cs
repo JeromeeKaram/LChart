@@ -7,6 +7,8 @@ using Microsoft.Office.Interop.PowerPoint;
 using Microsoft.VisualBasic.ApplicationServices;
 using Microsoft.VisualBasic.Devices;
 using Microsoft.WindowsAPICodePack.Dialogs;
+using MS.WindowsAPICodePack.Internal;
+
 
 
 //using MyPDFReader;
@@ -63,6 +65,11 @@ namespace LChart_Comparison_Tool
         List<Excel.Range> navigateRight = new List<Excel.Range>();
         List<Excel.Range> navigateUp = new List<Excel.Range>();
         List<Excel.Range> navigateDown = new List<Excel.Range>();
+
+        public List<Excel.Range> ParentMergedCells = new();
+
+        // Internal queues → BFS recursion
+        private Queue<(int row, int col)> UpQueue = new();
 
         public Form1()
         {
@@ -2458,7 +2465,7 @@ namespace LChart_Comparison_Tool
                 //.Where(f => Path.GetFileName(f).StartsWith($"HPC OFF", StringComparison.OrdinalIgnoreCase))
                 //.FirstOrDefault();
 
-                var number = "285"; //only 1 parent
+                var number = "284"; //only 1 parent
                 var number1 = "";
                 Excel.Application app = new Excel.Application();
                 Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
@@ -2553,39 +2560,11 @@ namespace LChart_Comparison_Tool
                         upCellColumn = foundAtColumn - 1;
                         upLineStartsAtRow = foundAtRow - 1;
                         upLineStartsAtColumn = foundAtColumn - 2;
-                        var result = MoveUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
+                        //var result = MoveUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
+                        //ProcessUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
+                        TraverseFrom(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
 
-                        if (result.leftIsMerged && result.rightIsMerged)
-                        {
-                            // BOTH have top border
-                            // Do something here
-                            string leftMergedText = result.leftMergedArea != null
-    ? result.leftMergedArea.Cells[1, 1].Text
-    : null;
-
-                            string rightMergedText = result.rightMergedArea != null
-                                ? result.rightMergedArea.Cells[1, 1].Text
-                                : null;
-
-                            string parentValue = result.parentCell.Value?.ToString();
-
-                            Console.WriteLine($"Left Merged Cell Text: {leftMergedText}");
-                            Console.WriteLine($"Right Merged Cell Text: {rightMergedText}");
-                            Console.WriteLine($"Parent Cell Text: {parentValue}");
-
-                        }
-                        else if (result.leftHasBorder)
-                        {
-                            // Only the LEFT has a top border
-                        }
-                        else if (result.rightHasBorder)
-                        {
-                            // Only the RIGHT has a top border
-                        }
-                        else
-                        {
-                            // Neither has border (should only happen if we hit row 1)
-                        }
+                        List<Excel.Range> parents = ParentMergedCells;
                     }
 
                     if (!found)
@@ -2612,11 +2591,12 @@ namespace LChart_Comparison_Tool
             //var navigateRight = false;
         }
 
-        public (bool leftHasBorder, bool rightHasBorder, int finalRow, Excel.Range leftCell, Excel.Range rightCell,
-            bool leftIsMerged, bool rightIsMerged, Excel.Range leftMergedArea, Excel.Range rightMergedArea, bool isSingleParent,
-            Excel.Range parentCell)
-            MoveUp(int row, int column, Worksheet ews)
+        // ======================================
+        //  MOVE UP
+        // ======================================
+        public UpResult MoveUp(int row, int column, Worksheet ews)
         {
+            UpResult result = new UpResult();
             int r = row;
 
             while (r > 1)
@@ -2640,53 +2620,37 @@ namespace LChart_Comparison_Tool
                     (Excel.XlLineStyle)rightCell.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle
                     != Excel.XlLineStyle.xlLineStyleNone;
 
+                // STOP — up connection broken
                 if (!leftHasRightBorder && !rightHasLeftBorder)
-                {
-                    return (leftHasTopBorder, rightHasTopBorder, r,
-                            leftCell, rightCell,
-                            false, false, null, null, false, null);
-                }
+                    return result;
 
+                // CASE 1 — merged parent directly above
                 if (leftHasTopBorder && rightHasTopBorder)
                 {
                     Excel.Range leftAboveCell = leftCell.Offset[-2, 0];
-                    Excel.Range rightAboveCell = rightCell.Offset[-2, 0];
+                    Excel.Range leftMergedArea = leftAboveCell.MergeCells ? leftAboveCell.MergeArea : null;
 
-                    bool leftIsMerged = leftAboveCell.MergeCells;
-                    bool rightIsMerged = rightAboveCell.MergeCells;
-
-                    Excel.Range leftMergedArea = leftIsMerged ? leftAboveCell.MergeArea : null;
-                    Excel.Range rightMergedArea = rightIsMerged ? rightAboveCell.MergeArea : null;
-
-                    Console.WriteLine("Left Merged area: " + leftMergedArea.Address);
-                    Console.WriteLine("Right Merged area: " + rightMergedArea.Address);
-
-                    // Top-left cell of merged block ($R$83)
                     Excel.Range topLeft = leftMergedArea.Cells[1, 1];
-
-                    // Calculate true top-right column index
                     int topRightColumn = topLeft.Column + leftMergedArea.Columns.Count - 1;
 
-                    // The actual top-right cell ($U$83)
-                    Excel.Range parentCell = ews.Cells[topLeft.Row, topRightColumn + 1];
+                    result.ParentMergedCell = ews.Cells[topLeft.Row, topRightColumn + 1];
+                    return result;
+                }
 
-                    return (leftHasTopBorder, rightHasTopBorder, r,
-                            leftCell, rightCell,
-                            leftIsMerged, rightIsMerged, leftMergedArea, rightMergedArea, leftHasTopBorder == rightHasTopBorder == true, parentCell);
-                }
-                else if (leftHasTopBorder)
-                {
-                    navigateLeft.Add(leftCell);
-                }
-                else if (rightHasTopBorder)
-                {
-                    navigateRight.Add(rightCell);
-                }
-                r--; // move UP
+                // CASE 2 — left-only top border
+                if (leftHasTopBorder)
+                    result.LeftCells.Add(leftCell);
+
+                // CASE 3 — right-only top border
+                if (rightHasTopBorder)
+                    result.RightCells.Add(rightCell);
+
+                r--;
             }
 
-            return (false, false, r, null, null, false, false, null, null, false, null);
+            return result;
         }
+
 
         public void moveLeft(int row, int column, Worksheet ews, Excel.Range startCell)
         {
@@ -2743,5 +2707,252 @@ namespace LChart_Comparison_Tool
                 current = current.Offset[0, 1];
             }
         }
+
+        public List<Excel.Range> FindParents(Worksheet ews, Excel.Range startCell)
+        {
+            List<Excel.Range> parents = new();
+
+            // Step 1 — Move Up
+            UpResult up = MoveUp(startCell.Row, startCell.Column, ews);
+
+            // CASE 1 — merged parent found directly
+            if (up.ParentMergedCell != null)
+            {
+                parents.Add(up.ParentMergedCell);
+
+                // Recursion: this parent may have more parents
+                parents.AddRange(
+                    FindParents(ews, up.ParentMergedCell)
+                );
+            }
+
+            // CASE 2 — no merged parent, follow left/right paths
+            List<Excel.Range> collected = new();
+
+            // collect LEFT path cells
+            foreach (var left in up.LeftCells)
+                moveLeft(ews, left, collected);
+
+            // collect RIGHT path cells
+            foreach (var right in up.RightCells)
+                moveRight(ews, right, collected);
+
+            // For every collected cell, call MoveUp again
+            foreach (var cell in collected)
+                parents.AddRange(
+                    FindParents(ews, cell)
+                );
+
+            return parents;
+        }
+
+
+        public void moveLeft(Worksheet ews, Excel.Range start, List<Excel.Range> list)
+        {
+            Excel.Range current = start;
+
+            while (true)
+            {
+                bool hasLeft =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                bool hasBottom =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                if (!hasBottom) break;     // stop
+
+                if (hasLeft)               // save if left + bottom
+                    list.Add(current);
+
+                current = current.Offset[0, -1]; // move left
+            }
+        }
+
+        public void moveRight(Worksheet ews, Excel.Range start, List<Excel.Range> list)
+        {
+            Excel.Range current = start;
+
+            while (true)
+            {
+                bool hasRight =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                bool hasBottom =
+                    (Excel.XlLineStyle)current.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle
+                    != Excel.XlLineStyle.xlLineStyleNone;
+
+                if (!hasBottom) break;
+
+                if (hasRight)
+                    list.Add(current);
+
+                current = current.Offset[0, 1]; // move right
+            }
+        }
+
+        // =======================================================
+        //  MAIN ENTRY POINT
+        // =======================================================
+        public void TraverseFrom(int startRow, int startColumn, Worksheet _ws)
+        {
+            UpQueue.Enqueue((startRow, startColumn));
+
+            while (UpQueue.Count > 0)
+            {
+                var node = UpQueue.Dequeue();
+                ProcessUp(node.row, node.col, _ws);
+            }
+        }
+
+        // =======================================================
+        //  UP NAVIGATION
+        // =======================================================
+        private void ProcessUp(int row, int column, Worksheet _ws)
+        {
+            int r = row;
+
+            while (r > 1)
+            {
+                Excel.Range leftCell = _ws.Cells[r, column - 1];
+                Excel.Range rightCell = _ws.Cells[r, column];
+
+                bool leftHasTop = HasTop(leftCell);
+                bool rightHasTop = HasTop(rightCell);
+
+                bool leftHasRight = HasRight(leftCell);
+                bool rightHasLeft = HasLeft(rightCell);
+
+                // -----------------------------------------
+                // STOP condition:
+                // left has NO right border AND right has NO left border
+                // -----------------------------------------
+                if (!leftHasRight && !rightHasLeft)
+                    return;
+
+                // -----------------------------------------
+                // FOUND PARENT MERGED CELL
+                // -----------------------------------------
+                if (leftHasTop && rightHasTop)
+                {
+                    Excel.Range parent = ResolveMergeParent(leftCell, _ws);
+                    ParentMergedCells.Add(parent);
+                    return;
+                }
+                else if (leftHasTop)
+                {
+                    ProcessLeftPath(leftCell);
+                }
+                else if (rightHasTop)
+                {
+                    ProcessRightPath(rightCell);
+                }
+
+                // -----------------------------------------
+                // Otherwise: SAVE LEFT/RIGHT path for later
+                // -----------------------------------------
+                //if (leftHasTop)
+                //{
+                    
+                //}
+
+                //if (rightHasTop)
+                //{
+                    
+                //}
+
+                r--; // MOVE UP
+            }
+        }
+
+
+        // =======================================================
+        //  LEFT PATH
+        // =======================================================
+        private void ProcessLeftPath(Excel.Range startCell)
+        {
+            Excel.Range current = startCell.Offset[-1, 0];
+
+            while (true)
+            {
+                bool left = HasLeft(current);
+                bool bottom = HasBottom(current);
+
+                if (!bottom)
+                    break;
+
+                if (left && bottom)
+                {
+                    // Enqueue NEW UP traversal point
+                    UpQueue.Enqueue((current.Row, current.Column));
+                }
+
+                current = current.Offset[0, -1]; // MOVE LEFT
+            }
+        }
+
+        // =======================================================
+        //  RIGHT PATH
+        // =======================================================
+        private void ProcessRightPath(Excel.Range startCell)
+        {
+            Excel.Range current = startCell;
+
+            while (true)
+            {
+                bool right = HasRight(current);
+                bool bottom = HasBottom(current);
+
+                if (!bottom)
+                    break;
+
+                if (right && bottom)
+                {
+                    // Enqueue NEW UP traversal point
+                    UpQueue.Enqueue((current.Row, current.Column));
+                }
+
+                current = current.Offset[0, 1]; // MOVE RIGHT
+            }
+        }
+
+        // =======================================================
+        //  RESOLVE MERGED CELL PARENT
+        // =======================================================
+        private Excel.Range ResolveMergeParent(Excel.Range belowCell, Worksheet _ws)
+        {
+            Excel.Range above = belowCell.Offset[-2, 0];
+
+            if (!above.MergeCells)
+                return null;
+
+            Excel.Range merged = above.MergeArea;
+
+            Excel.Range topLeft = merged.Cells[1, 1];
+            int parentCol = topLeft.Column + merged.Columns.Count;
+
+            return _ws.Cells[topLeft.Row, parentCol];
+        }
+
+        // =======================================================
+        //  BORDER HELPERS
+        // =======================================================
+        private bool HasTop(Excel.Range c) =>
+            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle
+            != Excel.XlLineStyle.xlLineStyleNone;
+
+        private bool HasBottom(Excel.Range c) =>
+            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle
+            != Excel.XlLineStyle.xlLineStyleNone;
+
+        private bool HasLeft(Excel.Range c) =>
+            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle
+            != Excel.XlLineStyle.xlLineStyleNone;
+
+        private bool HasRight(Excel.Range c) =>
+            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle
+            != Excel.XlLineStyle.xlLineStyleNone;
     }
 }
