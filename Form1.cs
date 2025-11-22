@@ -2465,7 +2465,7 @@ namespace LChart_Comparison_Tool
                 //.Where(f => Path.GetFileName(f).StartsWith($"HPC OFF", StringComparison.OrdinalIgnoreCase))
                 //.FirstOrDefault();
 
-                var number = "284"; //only 1 parent
+                var number = "286"; //only 1 parent
                 var number1 = "";
                 Excel.Application app = new Excel.Application();
                 Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
@@ -2843,11 +2843,13 @@ namespace LChart_Comparison_Tool
                 }
                 else if (leftHasTop)
                 {
-                    ProcessLeftPath(leftCell);
+                    var turnLeft = leftCell.Offset[-1, 0];
+                    ProcessLeftPath(turnLeft);
                 }
                 else if (rightHasTop)
                 {
-                    ProcessRightPath(rightCell);
+                    var turnRight = rightCell.Offset[-1, 0];
+                    ProcessRightPath(turnRight);
                 }
 
                 // -----------------------------------------
@@ -2855,12 +2857,12 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 //if (leftHasTop)
                 //{
-                    
+
                 //}
 
                 //if (rightHasTop)
                 //{
-                    
+
                 //}
 
                 r--; // MOVE UP
@@ -2911,7 +2913,8 @@ namespace LChart_Comparison_Tool
                 if (right && bottom)
                 {
                     // Enqueue NEW UP traversal point
-                    UpQueue.Enqueue((current.Row, current.Column));
+                    int move1ColumnRight = current.Column + 1;
+                    UpQueue.Enqueue((current.Row, move1ColumnRight));
                 }
 
                 current = current.Offset[0, 1]; // MOVE RIGHT
