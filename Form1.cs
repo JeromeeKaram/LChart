@@ -2837,16 +2837,23 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 if (leftHasTop && rightHasTop)
                 {
-                    Excel.Range parent = ResolveMergeParent(leftCell, _ws);
-                    ParentMergedCells.Add(parent);
-                    return;
+                    //Excel.Range parent = ResolveMergeParent(leftCell, _ws);
+                    //ParentMergedCells.Add(parent);
+                    //return;
+
+                    Excel.Range parent;
+                    if (TryGetImmediateMergeParent(leftCell, _ws, out parent))
+                    {
+                        ParentMergedCells.Add(parent);
+                        return;
+                    }
                 }
-                else if (leftHasTop)
+                if (leftHasTop)
                 {
                     var turnLeft = leftCell.Offset[-1, 0];
                     ProcessLeftPath(turnLeft);
                 }
-                else if (rightHasTop)
+                if (rightHasTop)
                 {
                     var turnRight = rightCell.Offset[-1, 0];
                     ProcessRightPath(turnRight);
@@ -2875,7 +2882,8 @@ namespace LChart_Comparison_Tool
         // =======================================================
         private void ProcessLeftPath(Excel.Range startCell)
         {
-            Excel.Range current = startCell.Offset[-1, 0];
+            //Excel.Range current = startCell.Offset[-1, 0];
+            Excel.Range current = startCell;//.Offset[-1, 0];
 
             while (true)
             {
@@ -2924,20 +2932,20 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  RESOLVE MERGED CELL PARENT
         // =======================================================
-        private Excel.Range ResolveMergeParent(Excel.Range belowCell, Worksheet _ws)
-        {
-            Excel.Range above = belowCell.Offset[-2, 0];
+        //private Excel.Range ResolveMergeParent(Excel.Range belowCell, Worksheet _ws)
+        //{
+        //    Excel.Range above = belowCell.Offset[-2, 0];
 
-            if (!above.MergeCells)
-                return null;
+        //    if (!above.MergeCells)
+        //        return null;
 
-            Excel.Range merged = above.MergeArea;
+        //    Excel.Range merged = above.MergeArea;
 
-            Excel.Range topLeft = merged.Cells[1, 1];
-            int parentCol = topLeft.Column + merged.Columns.Count;
+        //    Excel.Range topLeft = merged.Cells[1, 1];
+        //    int parentCol = topLeft.Column + merged.Columns.Count;
 
-            return _ws.Cells[topLeft.Row, parentCol];
-        }
+        //    return _ws.Cells[topLeft.Row, parentCol];
+        //}
 
         // =======================================================
         //  BORDER HELPERS
@@ -2957,5 +2965,28 @@ namespace LChart_Comparison_Tool
         private bool HasRight(Excel.Range c) =>
             (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle
             != Excel.XlLineStyle.xlLineStyleNone;
+
+        private bool TryGetImmediateMergeParent(Excel.Range belowCell, Worksheet ws, out Excel.Range parentCell)
+        {
+            parentCell = null;
+
+            // Excel: to reach the TRUE merged cell above, you need Offset[-2, 0]
+            Excel.Range above = belowCell.Offset[-2, 0];
+
+            // Not a merged cell → no parent
+            if (!above.MergeCells)
+                return false;
+
+            Excel.Range merged = above.MergeArea;
+
+            // Top-left cell of merged block
+            Excel.Range topLeft = merged.Cells[1, 1];
+
+            // Compute parent column (right edge + 1)
+            int parentCol = topLeft.Column + merged.Columns.Count;
+
+            parentCell = ws.Cells[topLeft.Row, parentCol];
+            return true;
+        }
     }
 }

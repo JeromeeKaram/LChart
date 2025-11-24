@@ -65,6 +65,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ParentNode.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -202,7 +203,7 @@ ROBOCOPY "$(TargetDir) " "$(TargetDir)DLLS\ " /XF *.exe *.config *.manifest /XD 
 if %25errorlevel%25 leq 4 exit 0 else exit %25errorlevel%25
 </PostBuildEvent>
   </PropertyGroup>
-<PropertyGroup>
+  <PropertyGroup>
     <LangVersion>latest</LangVersion>
-</PropertyGroup>
+  </PropertyGroup>
 </Project>
