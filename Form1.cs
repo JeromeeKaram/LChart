@@ -7,6 +7,7 @@ using Microsoft.Office.Interop.PowerPoint;
 using Microsoft.VisualBasic.ApplicationServices;
 using Microsoft.VisualBasic.Devices;
 using Microsoft.WindowsAPICodePack.Dialogs;
+using Microsoft.WindowsAPICodePack.Shell;
 using MS.WindowsAPICodePack.Internal;
 
 
@@ -70,6 +71,7 @@ namespace LChart_Comparison_Tool
 
         // Internal queues → BFS recursion
         private Queue<(int row, int col)> UpQueue = new();
+        private Queue<(int row, int col)> DownQueue = new();
 
         public Form1()
         {
@@ -2465,10 +2467,14 @@ namespace LChart_Comparison_Tool
                 //.Where(f => Path.GetFileName(f).StartsWith($"HPC OFF", StringComparison.OrdinalIgnoreCase))
                 //.FirstOrDefault();
 
-                var number = "286"; //only 1 parent
-                var number1 = "";
+                var number = "434"; //only 1 parent
+                var switchh = "ON";
                 Excel.Application app = new Excel.Application();
-                Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
+                Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\HPC ON_24_Jul_2025.xlsx");
+                //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
+                //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\FAN_CASE OFF_04_Jul_2025.xlsx");
+                //var number1 = "";
+
                 Excel.Worksheet worksheet = wb.Sheets[1];
                 //var package = new ExcelPackage(new FileInfo("D:\\iHi\\GBX_Assembly\\Final_Assembly.xlsx"));
                 //var worksheet = package.Workbook.Worksheets[1];
@@ -2545,14 +2551,15 @@ namespace LChart_Comparison_Tool
 
                 if (found)
                 {
-                    var switchh = "OFF";
+
                     if (switchh == "ON")
                     {
                         downCellRow = foundAtRow + 1;
                         downCellColumn = foundAtColumn - 1;
                         downLineStartsAtRow = foundAtRow + 4;
                         downLineStartsAtColumn = foundAtColumn - 2;
-                        moveDown(downLineStartsAtRow, downLineStartsAtColumn, worksheet);
+                        TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheet);
+                        List<Excel.Range> parents = ParentMergedCells;
                     }
                     else if (switchh == "OFF")
                     {
@@ -2560,10 +2567,7 @@ namespace LChart_Comparison_Tool
                         upCellColumn = foundAtColumn - 1;
                         upLineStartsAtRow = foundAtRow - 1;
                         upLineStartsAtColumn = foundAtColumn - 2;
-                        //var result = MoveUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
-                        //ProcessUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
-                        TraverseFrom(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
-
+                        TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
                         List<Excel.Range> parents = ParentMergedCells;
                     }
 
@@ -2573,22 +2577,15 @@ namespace LChart_Comparison_Tool
             }
         }
 
-        public void moveDown(int row, int column, Worksheet ews)
+        public void TraverseDown(int startRow, int startColumn, Worksheet _ws)
         {
-            //var cell = ews.Cells[row, column];
+            DownQueue.Enqueue((startRow, startColumn));
 
-            //int moveDownRow = 0;
-            //var leftLine = (Excel.XlLineStyle)cell.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle;
-
-            //while (leftLine != Excel.XlLineStyle.xlLineStyleNone)
-            //{
-            //    moveDownRow++;
-            //    cell = ews.Cells[row + moveDownRow, column];
-            //    leftLine = (Excel.XlLineStyle)cell.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle;
-            //}
-
-            //var naviageLeft = false;
-            //var navigateRight = false;
+            while (DownQueue.Count > 0)
+            {
+                var node = DownQueue.Dequeue();
+                ProcessDown(node.row, node.col, _ws);
+            }
         }
 
         // ======================================
@@ -2796,7 +2793,7 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  MAIN ENTRY POINT
         // =======================================================
-        public void TraverseFrom(int startRow, int startColumn, Worksheet _ws)
+        public void TraverseUp(int startRow, int startColumn, Worksheet _ws)
         {
             UpQueue.Enqueue((startRow, startColumn));
 
@@ -2972,6 +2969,150 @@ namespace LChart_Comparison_Tool
 
             // Excel: to reach the TRUE merged cell above, you need Offset[-2, 0]
             Excel.Range above = belowCell.Offset[-2, 0];
+
+            // Not a merged cell → no parent
+            if (!above.MergeCells)
+                return false;
+
+            Excel.Range merged = above.MergeArea;
+
+            // Top-left cell of merged block
+            Excel.Range topLeft = merged.Cells[1, 1];
+
+            // Compute parent column (right edge + 1)
+            int parentCol = topLeft.Column + merged.Columns.Count;
+
+            parentCell = ws.Cells[topLeft.Row, parentCol];
+            return true;
+        }
+
+        // =======================================================
+        //  UP NAVIGATION
+        // =======================================================
+        private void ProcessDown(int row, int column, Worksheet _ws)
+        {
+            int r = row;
+
+            while (r <= 100000)
+            {
+                Excel.Range leftCell = _ws.Cells[r, column - 1];
+                Excel.Range rightCell = _ws.Cells[r, column];
+
+                bool leftHasBottom = HasBottom(leftCell);
+                bool rightHasBottom = HasBottom(rightCell);
+
+                bool leftHasRight = HasRight(leftCell);
+                bool rightHasLeft = HasLeft(rightCell);
+
+                // -----------------------------------------
+                // STOP condition:
+                // left has NO right border AND right has NO left border
+                // -----------------------------------------
+                if (!leftHasRight && !rightHasLeft)
+                    return;
+
+                // -----------------------------------------
+                // FOUND PARENT MERGED CELL
+                // -----------------------------------------
+                if (leftHasBottom && rightHasBottom)
+                {
+                    //Excel.Range parent = ResolveMergeParent(leftCell, _ws);
+                    //ParentMergedCells.Add(parent);
+                    //return;
+
+                    Excel.Range parent;
+                    if (TryGetImmediateMergeParentDown(leftCell, _ws, out parent))
+                    {
+                        ParentMergedCells.Add(parent);
+                        return;
+                    }
+                }
+                if (leftHasBottom)
+                {
+                    var turnLeft = leftCell.Offset[+1, 0];
+                    ProcessDownLeftPath(turnLeft);
+                }
+                if (rightHasBottom)
+                {
+                    var turnRight = rightCell.Offset[+1, 0];
+                    ProcessDownRightPath(turnRight);
+                }
+
+                // -----------------------------------------
+                // Otherwise: SAVE LEFT/RIGHT path for later
+                // -----------------------------------------
+                //if (leftHasTop)
+                //{
+
+                //}
+
+                //if (rightHasTop)
+                //{
+
+                //}
+
+                r++; // MOVE DOWN
+            }
+        }
+
+        // =======================================================
+        //  LEFT PATH
+        // =======================================================
+        private void ProcessDownLeftPath(Excel.Range startCell)
+        {
+            //Excel.Range current = startCell.Offset[-1, 0];
+            Excel.Range current = startCell;//.Offset[-1, 0];
+
+            while (true)
+            {
+                bool left = HasLeft(current);
+                bool top = HasTop(current);
+
+                if (!top)
+                    break;
+
+                if (left && top)
+                {
+                    // Enqueue NEW UP traversal point
+                    DownQueue.Enqueue((current.Row, current.Column));
+                }
+
+                current = current.Offset[0, -1]; // MOVE LEFT
+            }
+        }
+
+        // =======================================================
+        //  RIGHT PATH
+        // =======================================================
+        private void ProcessDownRightPath(Excel.Range startCell)
+        {
+            Excel.Range current = startCell;
+
+            while (true)
+            {
+                bool right = HasRight(current);
+                bool top = HasTop(current);
+
+                if (!top)
+                    break;
+
+                if (right && top)
+                {
+                    // Enqueue NEW UP traversal point
+                    int move1ColumnRight = current.Column + 1;
+                    DownQueue.Enqueue((current.Row, move1ColumnRight));
+                }
+
+                current = current.Offset[0, 1]; // MOVE RIGHT
+            }
+        }
+
+        private bool TryGetImmediateMergeParentDown(Excel.Range belowCell, Worksheet ws, out Excel.Range parentCell)
+        {
+            parentCell = null;
+
+            // Excel: to reach the TRUE merged cell above, you need Offset[-2, 0]
+            Excel.Range above = belowCell.Offset[+2, 0];
 
             // Not a merged cell → no parent
             if (!above.MergeCells)
