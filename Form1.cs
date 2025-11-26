@@ -2467,15 +2467,15 @@ namespace LChart_Comparison_Tool
                 //.Where(f => Path.GetFileName(f).StartsWith($"HPC OFF", StringComparison.OrdinalIgnoreCase))
                 //.FirstOrDefault();
 
-                var number = "434"; //only 1 parent
-                var switchh = "ON";
+                var number = "445"; //only 1 parent
+                var direction = "OFF";
                 Excel.Application app = new Excel.Application();
-                Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\HPC ON_24_Jul_2025.xlsx");
+                Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\Testing1.xlsx");
                 //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
                 //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\FAN_CASE OFF_04_Jul_2025.xlsx");
                 //var number1 = "";
 
-                Excel.Worksheet worksheet = wb.Sheets[1];
+                Excel.Worksheet worksheet = wb.Sheets[2];
                 //var package = new ExcelPackage(new FileInfo("D:\\iHi\\GBX_Assembly\\Final_Assembly.xlsx"));
                 //var worksheet = package.Workbook.Worksheets[1];
                 Excel.Range usedRange = worksheet.UsedRange;
@@ -2523,13 +2523,29 @@ namespace LChart_Comparison_Tool
                 //    Console.WriteLine("Merged Range: " + rng.Address);
                 //}
 
-                int firstRow = usedRange.Row;                  // 19
-                int rowCount = usedRange.Rows.Count;           // 85
-                int lastRow = firstRow + rowCount - 1;    // 103
+                //int firstRow = usedRange.Row;                  // 19
+                //int rowCount = usedRange.Rows.Count;           // 85
+                //int lastRow = firstRow + rowCount - 1;    // 103
+
+                // Find last used cell
+                Excel.Range lastCell = worksheet.Cells.Find(
+                    "*",
+                    Missing.Value,
+                    Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
+                    Excel.XlLookAt.xlPart,
+                    Excel.XlSearchOrder.xlByRows,
+                    Excel.XlSearchDirection.xlPrevious,
+                    false,
+                    Missing.Value,
+                    Missing.Value
+                );
+
+                int lastRow = lastCell != null ? lastCell.Row : 1;
+                int lastCol = lastCell != null ? lastCell.Column : 1;
 
                 for (int rrow = 1; rrow <= lastRow && !found; rrow++)
                 {
-                    for (int col = 1; col <= cols; col++)
+                    for (int col = 1; col <= 110; col++)
                     {
                         var cellText = worksheet.Cells[rrow, col].Text?.Trim();
                         cellText = cellText.Replace("\r", "")
@@ -2552,7 +2568,7 @@ namespace LChart_Comparison_Tool
                 if (found)
                 {
 
-                    if (switchh == "ON")
+                    if (direction == "ON")
                     {
                         downCellRow = foundAtRow + 1;
                         downCellColumn = foundAtColumn - 1;
@@ -2560,8 +2576,12 @@ namespace LChart_Comparison_Tool
                         downLineStartsAtColumn = foundAtColumn - 2;
                         TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheet);
                         List<Excel.Range> parents = ParentMergedCells;
+                        foreach(var p in parents)
+                        {
+                            Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
+                        }
                     }
-                    else if (switchh == "OFF")
+                    else if (direction == "OFF")
                     {
                         upCellRow = foundAtRow;
                         upCellColumn = foundAtColumn - 1;
@@ -2569,6 +2589,10 @@ namespace LChart_Comparison_Tool
                         upLineStartsAtColumn = foundAtColumn - 2;
                         TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
                         List<Excel.Range> parents = ParentMergedCells;
+                        foreach (var p in parents)
+                        {
+                            Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
+                        }
                     }
 
                     if (!found)
@@ -2632,10 +2656,6 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 if (leftHasTop && rightHasTop)
                 {
-                    //Excel.Range parent = ResolveMergeParent(leftCell, _ws);
-                    //ParentMergedCells.Add(parent);
-                    //return;
-
                     Excel.Range parent;
                     if (TryGetImmediateMergeParent(leftCell, _ws, out parent))
                     {
@@ -2653,19 +2673,6 @@ namespace LChart_Comparison_Tool
                     var turnRight = rightCell.Offset[-1, 0];
                     ProcessRightPath(turnRight);
                 }
-
-                // -----------------------------------------
-                // Otherwise: SAVE LEFT/RIGHT path for later
-                // -----------------------------------------
-                //if (leftHasTop)
-                //{
-
-                //}
-
-                //if (rightHasTop)
-                //{
-
-                //}
 
                 r--; // MOVE UP
             }
@@ -2813,10 +2820,6 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 if (leftHasBottom && rightHasBottom)
                 {
-                    //Excel.Range parent = ResolveMergeParent(leftCell, _ws);
-                    //ParentMergedCells.Add(parent);
-                    //return;
-
                     Excel.Range parent;
                     if (TryGetImmediateMergeParentDown(leftCell, _ws, out parent))
                     {
@@ -2834,19 +2837,6 @@ namespace LChart_Comparison_Tool
                     var turnRight = rightCell.Offset[+1, 0];
                     ProcessDownRightPath(turnRight);
                 }
-
-                // -----------------------------------------
-                // Otherwise: SAVE LEFT/RIGHT path for later
-                // -----------------------------------------
-                //if (leftHasTop)
-                //{
-
-                //}
-
-                //if (rightHasTop)
-                //{
-
-                //}
 
                 r++; // MOVE DOWN
             }
