@@ -44,6 +44,8 @@ namespace LChart_Comparison_Tool
             this.label2 = new System.Windows.Forms.Label();
             this.pictureBox5 = new System.Windows.Forms.PictureBox();
             this.LChart_Comparison = new System.Windows.Forms.TabPage();
+            this.txtBlockNumber = new System.Windows.Forms.TextBox();
+            this.btnParentChild = new System.Windows.Forms.Button();
             this.label16 = new System.Windows.Forms.Label();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.textBox1 = new System.Windows.Forms.TextBox();
@@ -68,7 +70,9 @@ namespace LChart_Comparison_Tool
             this.label5 = new System.Windows.Forms.Label();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
-            this.btnParentChild = new System.Windows.Forms.Button();
+            this.cmbDirection = new System.Windows.Forms.ComboBox();
+            this.btnBrowse = new System.Windows.Forms.Button();
+            this.txtFilePath = new System.Windows.Forms.TextBox();
             this.Help.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox5)).BeginInit();
             this.LChart_Comparison.SuspendLayout();
@@ -96,7 +100,7 @@ namespace LChart_Comparison_Tool
             this.Help.Controls.Add(this.pictureBox5);
             this.Help.Location = new System.Drawing.Point(4, 33);
             this.Help.Name = "Help";
-            this.Help.Padding = new System.Windows.Forms.Padding(3, 3, 3, 3);
+            this.Help.Padding = new System.Windows.Forms.Padding(3);
             this.Help.Size = new System.Drawing.Size(776, 320);
             this.Help.TabIndex = 4;
             this.Help.Text = "   Help  ";
@@ -218,6 +222,10 @@ namespace LChart_Comparison_Tool
             // 
             this.LChart_Comparison.BackgroundImage = global::LChart_Comparison_Tool.Properties.Resources.Ticket_Maker;
             this.LChart_Comparison.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.LChart_Comparison.Controls.Add(this.txtFilePath);
+            this.LChart_Comparison.Controls.Add(this.btnBrowse);
+            this.LChart_Comparison.Controls.Add(this.cmbDirection);
+            this.LChart_Comparison.Controls.Add(this.txtBlockNumber);
             this.LChart_Comparison.Controls.Add(this.btnParentChild);
             this.LChart_Comparison.Controls.Add(this.label16);
             this.LChart_Comparison.Controls.Add(this.progressBar1);
@@ -234,12 +242,29 @@ namespace LChart_Comparison_Tool
             this.LChart_Comparison.Controls.Add(this.label12);
             this.LChart_Comparison.Location = new System.Drawing.Point(4, 33);
             this.LChart_Comparison.Name = "LChart_Comparison";
-            this.LChart_Comparison.Padding = new System.Windows.Forms.Padding(3, 3, 3, 3);
+            this.LChart_Comparison.Padding = new System.Windows.Forms.Padding(3);
             this.LChart_Comparison.Size = new System.Drawing.Size(776, 320);
             this.LChart_Comparison.TabIndex = 6;
             this.LChart_Comparison.Text = "LChart Comparison   ";
             this.LChart_Comparison.UseVisualStyleBackColor = true;
             this.LChart_Comparison.Click += new System.EventHandler(this.Form1_Checklist_Click);
+            // 
+            // txtBlockNumber
+            // 
+            this.txtBlockNumber.Location = new System.Drawing.Point(36, 232);
+            this.txtBlockNumber.Name = "txtBlockNumber";
+            this.txtBlockNumber.Size = new System.Drawing.Size(100, 27);
+            this.txtBlockNumber.TabIndex = 37;
+            // 
+            // btnParentChild
+            // 
+            this.btnParentChild.Location = new System.Drawing.Point(481, 233);
+            this.btnParentChild.Name = "btnParentChild";
+            this.btnParentChild.Size = new System.Drawing.Size(75, 39);
+            this.btnParentChild.TabIndex = 36;
+            this.btnParentChild.Text = "Find";
+            this.btnParentChild.UseVisualStyleBackColor = true;
+            this.btnParentChild.Click += new System.EventHandler(this.btnParentChild_Click);
             // 
             // label16
             // 
@@ -255,7 +280,7 @@ namespace LChart_Comparison_Tool
             // progressBar1
             // 
             this.progressBar1.Location = new System.Drawing.Point(-3, 289);
-            this.progressBar1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.progressBar1.Margin = new System.Windows.Forms.Padding(2);
             this.progressBar1.Maximum = 150;
             this.progressBar1.Name = "progressBar1";
             this.progressBar1.Size = new System.Drawing.Size(781, 28);
@@ -283,7 +308,7 @@ namespace LChart_Comparison_Tool
             this.comboBox1.FormattingEnabled = true;
             this.comboBox1.ItemHeight = 28;
             this.comboBox1.Location = new System.Drawing.Point(194, 46);
-            this.comboBox1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.comboBox1.Margin = new System.Windows.Forms.Padding(2);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(388, 34);
             this.comboBox1.TabIndex = 32;
@@ -529,15 +554,33 @@ namespace LChart_Comparison_Tool
             this.pictureBox2.TabIndex = 21;
             this.pictureBox2.TabStop = false;
             // 
-            // btnParentChild
+            // cmbDirection
             // 
-            this.btnParentChild.Location = new System.Drawing.Point(302, 232);
-            this.btnParentChild.Name = "btnParentChild";
-            this.btnParentChild.Size = new System.Drawing.Size(215, 39);
-            this.btnParentChild.TabIndex = 36;
-            this.btnParentChild.Text = "Parent Child";
-            this.btnParentChild.UseVisualStyleBackColor = true;
-            this.btnParentChild.Click += new System.EventHandler(this.btnParentChild_Click);
+            this.cmbDirection.FormattingEnabled = true;
+            this.cmbDirection.Items.AddRange(new object[] {
+            "OFF",
+            "ON"});
+            this.cmbDirection.Location = new System.Drawing.Point(142, 232);
+            this.cmbDirection.Name = "cmbDirection";
+            this.cmbDirection.Size = new System.Drawing.Size(80, 28);
+            this.cmbDirection.TabIndex = 38;
+            // 
+            // btnBrowse
+            // 
+            this.btnBrowse.Location = new System.Drawing.Point(400, 237);
+            this.btnBrowse.Name = "btnBrowse";
+            this.btnBrowse.Size = new System.Drawing.Size(75, 34);
+            this.btnBrowse.TabIndex = 39;
+            this.btnBrowse.Text = "Browse";
+            this.btnBrowse.UseVisualStyleBackColor = true;
+            this.btnBrowse.Click += new System.EventHandler(this.btnBrowse_Click);
+            // 
+            // txtFilePath
+            // 
+            this.txtFilePath.Location = new System.Drawing.Point(228, 235);
+            this.txtFilePath.Name = "txtFilePath";
+            this.txtFilePath.Size = new System.Drawing.Size(166, 27);
+            this.txtFilePath.TabIndex = 40;
             // 
             // Form1
             // 
@@ -607,5 +650,9 @@ namespace LChart_Comparison_Tool
         private Label label16;
         private Label label13;
         private Button btnParentChild;
+        private TextBox txtBlockNumber;
+        private ComboBox cmbDirection;
+        private TextBox txtFilePath;
+        private Button btnBrowse;
     }
 }

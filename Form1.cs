@@ -322,6 +322,7 @@ namespace LChart_Comparison_Tool
         {
             progressBar1.Visible = false;
             label16.Visible = false;
+            cmbDirection.SelectedIndex = 0;
         }
         private void Form1_Update_Click(object sender, EventArgs e)
         {
@@ -2466,16 +2467,28 @@ namespace LChart_Comparison_Tool
                 //    var matchedFile = files
                 //.Where(f => Path.GetFileName(f).StartsWith($"HPC OFF", StringComparison.OrdinalIgnoreCase))
                 //.FirstOrDefault();
+                if(string.IsNullOrEmpty(txtBlockNumber.Text))
+                {
+                    MessageBox.Show("Please enter Block Number");
+                    return;
+                };
 
-                var number = "445"; //only 1 parent
-                var direction = "OFF";
+                if (string.IsNullOrEmpty(txtFilePath.Text))
+                {
+                    MessageBox.Show("Please select file");
+                    return;
+                }
+
+                var number = txtBlockNumber.Text; //only 1 parent
+                var direction = cmbDirection.SelectedItem?.ToString();
                 Excel.Application app = new Excel.Application();
-                Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\Testing1.xlsx");
+                var filePath = txtFilePath.Text;
+                Excel.Workbook wb = app.Workbooks.Open(filePath);
                 //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
                 //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\FAN_CASE OFF_04_Jul_2025.xlsx");
                 //var number1 = "";
 
-                Excel.Worksheet worksheet = wb.Sheets[2];
+                Excel.Worksheet worksheet = wb.Sheets[1];
                 //var package = new ExcelPackage(new FileInfo("D:\\iHi\\GBX_Assembly\\Final_Assembly.xlsx"));
                 //var worksheet = package.Workbook.Worksheets[1];
                 Excel.Range usedRange = worksheet.UsedRange;
@@ -2580,6 +2593,7 @@ namespace LChart_Comparison_Tool
                         {
                             Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
                         }
+                        parents.Clear();
                     }
                     else if (direction == "OFF")
                     {
@@ -2593,6 +2607,7 @@ namespace LChart_Comparison_Tool
                         {
                             Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
                         }
+                        parents.Clear();
                     }
 
                     if (!found)
@@ -2915,6 +2930,20 @@ namespace LChart_Comparison_Tool
 
             parentCell = ws.Cells[topLeft.Row, parentCol];
             return true;
+        }
+
+        private void btnBrowse_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog ofd = new OpenFileDialog())
+            {
+                ofd.Title = "Select a file";
+                ofd.Filter = "All Files (*.*)|*.*";
+
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    txtFilePath.Text = ofd.FileName;
+                }
+            }
         }
     }
 }
