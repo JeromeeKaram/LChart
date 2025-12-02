@@ -9,6 +9,8 @@ using Microsoft.VisualBasic.Devices;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using Microsoft.WindowsAPICodePack.Shell;
 using MS.WindowsAPICodePack.Internal;
+using OfficeOpenXml;
+
 
 
 
@@ -72,6 +74,9 @@ namespace LChart_Comparison_Tool
         // Internal queues → BFS recursion
         private Queue<(int row, int col)> UpQueue = new();
         private Queue<(int row, int col)> DownQueue = new();
+
+
+        int newRowToWriteAt = 1;
 
         public Form1()
         {
@@ -2423,195 +2428,218 @@ namespace LChart_Comparison_Tool
 
         //}
 
-
-
         private void btnParentChild_Click(object sender, EventArgs e)
         {
             //var package = new ExcelPackage(new FileInfo("C:\\Users\\ga80358\\Downloads\\LChart Inputs\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx"));
-
-            ////using var package = new ExcelPackage(new FileInfo(filePath));
-
-            //foreach (var ws in package.Workbook.Worksheets)
-            //{
-            //    Console.WriteLine($"Found sheet: {ws.Name}");
-            //}
-
-            //// Get the first worksheet
-            //var worksheet = package.Workbook.Worksheets[1];
-
-            //// Find total rows and columns
-            //int rowCount = worksheet.Dimension.Rows;
-            //int colCount = worksheet.Dimension.Columns;
-
-            //Console.WriteLine($"Rows: {rowCount}, Columns: {colCount}");
-
-            //string folderPath = @"C:\Users\ga80358\Downloads\LChart Inputs\LChart Inputs\Batch-Deliverables\";
-
-            //// Get all files in the folder
-            //string[] files = Directory.GetFiles(folderPath);
-
-            //var number = "";
-            //var module = "";
-            //var switchh = "";
-
-            // Read each row (starting from row 2 to skip headers if applicable)
-            //for (int row = 7; row <= rowCount; row++)
+            var filePath = "D:\\iHi\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx";
+            using (var package = new ExcelPackage(new FileInfo(filePath)))
             {
-                //for (int col = 1; col <= colCount; col++)
-                //number = worksheet.Cells[row, 1].Text; // .Text preserves formatting
-                //module = worksheet.Cells[row, 3].Text;
-                //switchh = worksheet.Cells[row, 4].Text;
-                //Console.Write($"number-{number} module-{module} switchh-{switchh}\t");
-                //Console.WriteLine();
+                string newFilePath = "D:\\newfile.xls";
 
-                //    var matchedFile = files
-                //.Where(f => Path.GetFileName(f).StartsWith($"HPC OFF", StringComparison.OrdinalIgnoreCase))
-                //.FirstOrDefault();
-                if(string.IsNullOrEmpty(txtBlockNumber.Text))
+                //// Get the first worksheet
+                var wsReference = package.Workbook.Worksheets[1];
+
+                // Find total rows and columns
+                int rowCount = wsReference.Dimension.Rows;
+                int colCount = wsReference.Dimension.Columns;
+
+                Console.WriteLine($"Rows: {rowCount}, Columns: {colCount}");
+                //File.WriteAllText("D:\\test.txt", "hello");
+
+                //string folderPath = @"C:\Users\ga80358\Downloads\LChart Inputs\LChart Inputs\Batch-Deliverables\";
+
+                //// Get all files in the folder
+                //string[] files = Directory.GetFiles(folderPath);
+
+                //var number = "";
+                //var module = "";
+                //var switchh = "";
+
+                //Create new excel file
+                try
                 {
-                    MessageBox.Show("Please enter Block Number");
-                    return;
-                };
-
-                if (string.IsNullOrEmpty(txtFilePath.Text))
-                {
-                    MessageBox.Show("Please select file");
-                    return;
-                }
-
-                var number = txtBlockNumber.Text; //only 1 parent
-                var direction = cmbDirection.SelectedItem?.ToString();
-                Excel.Application app = new Excel.Application();
-                var filePath = txtFilePath.Text;
-                Excel.Workbook wb = app.Workbooks.Open(filePath);
-                //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
-                //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\FAN_CASE OFF_04_Jul_2025.xlsx");
-                //var number1 = "";
-
-                Excel.Worksheet worksheet = wb.Sheets[1];
-                //var package = new ExcelPackage(new FileInfo("D:\\iHi\\GBX_Assembly\\Final_Assembly.xlsx"));
-                //var worksheet = package.Workbook.Worksheets[1];
-                Excel.Range usedRange = worksheet.UsedRange;
-                int rows = usedRange.Rows.Count;
-                int cols = usedRange.Columns.Count;
-                int foundAtRow = 0;
-                int foundAtColumn = 0;
-
-                bool found = false;
-                int cellToTheLeft = 0;
-                int topCell = 0;
-                int bottomCell = 0;
-
-                int downCellRow = 0;
-                int downCellColumn = 0;
-                int downLineStartsAtRow = 0;
-                int downLineStartsAtColumn = 0;
-
-                int upCellRow = 0;
-                int upCellColumn = 0;
-                int upLineStartsAtRow = 0;
-                int upLineStartsAtColumn = 0;
-
-                List<string> move = new List<string>();
-
-                List<Excel.Range> mergedRanges = new List<Excel.Range>();
-
-                //foreach (Excel.Range cell in usedRange.Cells)
-                //{
-                //    if (cell.MergeCells)
-                //    {
-                //        Excel.Range merged = cell.MergeArea;
-
-                //        // Avoid duplicates (MergeArea repeats for each cell in the area)
-                //        bool exists = mergedRanges.Any(r =>
-                //            r.Address == merged.Address);
-
-                //        if (!exists)
-                //            mergedRanges.Add(merged);
-                //    }
-                //}
-
-                //foreach (var rng in mergedRanges)
-                //{
-                //    Console.WriteLine("Merged Range: " + rng.Address);
-                //}
-
-                //int firstRow = usedRange.Row;                  // 19
-                //int rowCount = usedRange.Rows.Count;           // 85
-                //int lastRow = firstRow + rowCount - 1;    // 103
-
-                // Find last used cell
-                Excel.Range lastCell = worksheet.Cells.Find(
-                    "*",
-                    Missing.Value,
-                    Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
-                    Excel.XlLookAt.xlPart,
-                    Excel.XlSearchOrder.xlByRows,
-                    Excel.XlSearchDirection.xlPrevious,
-                    false,
-                    Missing.Value,
-                    Missing.Value
-                );
-
-                int lastRow = lastCell != null ? lastCell.Row : 1;
-                int lastCol = lastCell != null ? lastCell.Column : 1;
-
-                for (int rrow = 1; rrow <= lastRow && !found; rrow++)
-                {
-                    for (int col = 1; col <= 110; col++)
+                    if (!File.Exists(newFilePath))
                     {
-                        var cellText = worksheet.Cells[rrow, col].Text?.Trim();
-                        cellText = cellText.Replace("\r", "")
-                   .Replace("\n", "")
-                   .Trim();
+                        var excel = new Excel.Application();
+                        excel.Visible = false;
 
-                        cellText = Convert.ToString(cellText);
+                        Excel.Workbook workbook = excel.Workbooks.Add();
+                        Excel.Worksheet ws = workbook.Sheets[1];
 
-                        if (string.Equals(cellText, number, StringComparison.OrdinalIgnoreCase))
-                        {
-                            Console.WriteLine($"✅ Found \"{number}\" at Row: {rrow}, Column: {col}");
-                            found = true;
-                            foundAtRow = rrow;
-                            foundAtColumn = col;
-                            break;
-                        }
+                        ws.Cells[1, 1].Value = "Hello 1";
+                        ws.Cells[1, 2].Value = "World 2";
+
+                        workbook.SaveAs(newFilePath, Excel.XlFileFormat.xlWorkbookNormal);
+
+                        workbook.Close(false);  // <-- important
+                        excel.Quit();
+
+                        // release COM objects
+                        Marshal.ReleaseComObject(ws);
+                        Marshal.ReleaseComObject(workbook);
+                        Marshal.ReleaseComObject(excel);
                     }
                 }
-
-                if (found)
+                catch (Exception ex)
                 {
+                    Console.WriteLine(ex.ToString());
+                }
 
-                    if (direction == "ON")
+                //
+
+
+                // Read each row (starting from row 2 to skip headers if applicable)
+                for (int referenceRow = 7; referenceRow <= rowCount; referenceRow++)
+                {
+                    //for (int col = 1; col <= colCount; col++)
+                    //{********************************************************************
+
+                    //}
+                    var blockNumber = wsReference.Cells[referenceRow, 1].Text; // .Text preserves formatting
+                    var module = wsReference.Cells[referenceRow, 3].Text;
+                    var direction = wsReference.Cells[referenceRow, 4].Text;
+                    Console.Write($"number-{blockNumber} module-{module} switchh-{direction}");
+                    //Console.WriteLine();
+
+                    string folderPath = @"D:\iHi\LChart Inputs\Batch-Deliverables";
+
+                    string[] files = Directory.GetFiles(folderPath);
+
+                    var matchedFile = files
+                .Where(f => Path.GetFileName(f).StartsWith($"{module} {direction}", StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault();
+
+                    if (string.IsNullOrEmpty(blockNumber))
                     {
-                        downCellRow = foundAtRow + 1;
-                        downCellColumn = foundAtColumn - 1;
-                        downLineStartsAtRow = foundAtRow + 4;
-                        downLineStartsAtColumn = foundAtColumn - 2;
-                        TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheet);
-                        List<Excel.Range> parents = ParentMergedCells;
-                        foreach(var p in parents)
-                        {
-                            Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
-                        }
-                        parents.Clear();
-                    }
-                    else if (direction == "OFF")
-                    {
-                        upCellRow = foundAtRow;
-                        upCellColumn = foundAtColumn - 1;
-                        upLineStartsAtRow = foundAtRow - 1;
-                        upLineStartsAtColumn = foundAtColumn - 2;
-                        TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
-                        List<Excel.Range> parents = ParentMergedCells;
-                        foreach (var p in parents)
-                        {
-                            Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
-                        }
-                        parents.Clear();
+                        //MessageBox.Show("Please enter Block Number");
+                        //return;
+                        continue;
                     }
 
-                    if (!found)
-                        Console.WriteLine($"❌ Value \"{number}\" not found in the worksheet.");
+                    //var number = txtBlockNumber.Text; //only 1 parent
+                    //var direction = cmbDirection.SelectedItem?.ToString();
+                    Excel.Application app = new Excel.Application();
+                    //var filePath = txtFilePath.Text;
+                    Excel.Workbook wb = app.Workbooks.Open(matchedFile);
+                    //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
+                    //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\FAN_CASE OFF_04_Jul_2025.xlsx");
+                    //var number1 = "";
+
+                    Excel.Worksheet worksheet = wb.Sheets[1];
+                    //var package = new ExcelPackage(new FileInfo("D:\\iHi\\GBX_Assembly\\Final_Assembly.xlsx"));
+                    //var worksheet = package.Workbook.Worksheets[1];
+                    Excel.Range usedRange = worksheet.UsedRange;
+                    int rows = usedRange.Rows.Count;
+                    int cols = usedRange.Columns.Count;
+                    int foundAtRow = 0;
+                    int foundAtColumn = 0;
+
+                    bool found = false;
+                    int cellToTheLeft = 0;
+                    int topCell = 0;
+                    int bottomCell = 0;
+
+                    int downCellRow = 0;
+                    int downCellColumn = 0;
+                    int downLineStartsAtRow = 0;
+                    int downLineStartsAtColumn = 0;
+
+                    int upCellRow = 0;
+                    int upCellColumn = 0;
+                    int upLineStartsAtRow = 0;
+                    int upLineStartsAtColumn = 0;
+
+                    List<string> move = new List<string>();
+
+                    List<Excel.Range> mergedRanges = new List<Excel.Range>();
+
+                    // Find last used cell
+                    Excel.Range lastCell = worksheet.Cells.Find(
+                        "*",
+                        Missing.Value,
+                        Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
+                        Excel.XlLookAt.xlPart,
+                        Excel.XlSearchOrder.xlByRows,
+                        Excel.XlSearchDirection.xlPrevious,
+                        false,
+                        Missing.Value,
+                        Missing.Value
+                    );
+
+                    int lastRow = lastCell != null ? lastCell.Row : 1;
+                    int lastCol = lastCell != null ? lastCell.Column : 1;
+
+                    //Row to copy
+
+                    object[] fullRow = new object[colCount];
+
+                    for (int col = 1; col <= colCount; col++)
+                    {
+                        fullRow[col - 1] = wsReference.Cells[referenceRow, col].Value;
+                    }
+
+                    for (int rrow = 1; rrow <= lastRow && !found; rrow++)
+                    {
+                        for (int col = 1; col <= lastCol; col++)
+                        {
+                            var cellText = worksheet.Cells[rrow, col].Text?.Trim();
+                            cellText = cellText.Replace("\r", "")
+                       .Replace("\n", "")
+                       .Trim();
+
+                            cellText = Convert.ToString(cellText);
+
+                            if (string.Equals(cellText, blockNumber, StringComparison.OrdinalIgnoreCase))
+                            {
+                                Console.WriteLine($"✅ Found \"{blockNumber}\" at Row: {rrow}, Column: {col}");
+                                found = true;
+                                foundAtRow = rrow;
+                                foundAtColumn = col;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (found)
+                    {
+                        if (direction == "ON")
+                        {
+                            downCellRow = foundAtRow + 1;
+                            downCellColumn = foundAtColumn - 1;
+                            downLineStartsAtRow = foundAtRow + 4;
+                            downLineStartsAtColumn = foundAtColumn - 2;
+                            TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheet);
+                            List<Excel.Range> parents = ParentMergedCells;
+                            foreach (var p in parents)
+                            {
+                                //Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
+                                WriteToNewFile(newFilePath, newRowToWriteAt, fullRow);
+                                newRowToWriteAt = parents.Count + 1;
+                            }
+                            //parents.Clear();
+                        }
+                        else if (direction == "OFF")
+                        {
+                            upCellRow = foundAtRow;
+                            upCellColumn = foundAtColumn - 1;
+                            upLineStartsAtRow = foundAtRow - 1;
+                            upLineStartsAtColumn = foundAtColumn - 2;
+                            TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheet);
+                            List<Excel.Range> parents = ParentMergedCells;
+                            foreach (var p in parents)
+                            {
+                                WriteToNewFile(newFilePath, newRowToWriteAt, fullRow);
+                                newRowToWriteAt = parents.Count + 1;
+                            }
+                            //parents.Clear();
+                        }
+                    }
+                    else
+                    {
+                        WriteToNewFile(newFilePath, newRowToWriteAt, fullRow);
+                        newRowToWriteAt = newRowToWriteAt + 1;
+                        Console.WriteLine($"❌ Value \"{blockNumber}\" not found in the worksheet.");
+                    }
                 }
             }
         }
@@ -2943,6 +2971,20 @@ namespace LChart_Comparison_Tool
                 {
                     txtFilePath.Text = ofd.FileName;
                 }
+            }
+        }
+
+        private void WriteToNewFile(string filePath, int writeAtRow, object[] columnValues)
+        {
+            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            {
+                var ws = package.Workbook.Worksheets[0];
+
+                foreach (var column in columnValues.Select((value, index) => new { value, index }))
+                {
+                    ws.Cells[writeAtRow, column.index + 1].Value = column.value;
+                }
+                package.Save();
             }
         }
     }
