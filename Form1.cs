@@ -2441,27 +2441,14 @@ namespace LChart_Comparison_Tool
                 var wsReference = package.Workbook.Worksheets[1];
 
                 // Find total rows and columns
-                int rowCount = wsReference.Dimension.Rows;
-                int colCount = wsReference.Dimension.Columns;
+                int wsReferenceRowCount = wsReference.Dimension.Rows;
+                int wsReferencecolumnCount = wsReference.Dimension.Columns;
 
-                Console.WriteLine($"Rows: {rowCount}, Columns: {colCount}");
-                //File.WriteAllText("D:\\test.txt", "hello");
-
-                //string folderPath = @"C:\Users\ga80358\Downloads\LChart Inputs\LChart Inputs\Batch-Deliverables\";
-
-                //// Get all files in the folder
-                //string[] files = Directory.GetFiles(folderPath);
-
-                //var number = "";
-                //var module = "";
-                //var switchh = "";
-
+                Console.WriteLine($"Rows: {wsReferenceRowCount}, Columns: {wsReferencecolumnCount}");
+                
                 //Create new excel file
                 try
                 {
-                    //OfficeOpenXml.ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
-
-
                     if (!File.Exists(newFilePath))
                     {
                         using (var package1 = new ExcelPackage()) // NEW workbook
@@ -2481,21 +2468,13 @@ namespace LChart_Comparison_Tool
                     Console.WriteLine(ex.ToString());
                 }
 
-                //
-
-
                 // Read each row (starting from row 2 to skip headers if applicable)
-                for (int referenceRow = 7; referenceRow <= 7; referenceRow++)
+                for (int referenceRow = 7; referenceRow <= wsReferenceRowCount; referenceRow++)
                 {
-                    //for (int col = 1; col <= colCount; col++)
-                    //{********************************************************************
-
-                    //}
-                    var blockNumber = "284";// wsReference.Cells[referenceRow, 1].Text; // .Text preserves formatting
+                    var blockNumber = wsReference.Cells[referenceRow, 1].Text; // .Text preserves formatting
                     var module = wsReference.Cells[referenceRow, 3].Text;
                     var direction = wsReference.Cells[referenceRow, 4].Text;
                     Console.Write($"number-{blockNumber} module-{module} switchh-{direction}");
-                    //Console.WriteLine();
 
                     string folderPath = @"D:\iHi\LChart Inputs\Batch-Deliverables";
 
@@ -2507,24 +2486,13 @@ namespace LChart_Comparison_Tool
 
                     if (string.IsNullOrEmpty(blockNumber))
                     {
-                        //MessageBox.Show("Please enter Block Number");
-                        //return;
                         continue;
                     }
 
-                    //var number = txtBlockNumber.Text; //only 1 parent
-                    //var direction = cmbDirection.SelectedItem?.ToString();
                     Excel.Application app = new Excel.Application();
-                    //var filePath = txtFilePath.Text;
                     Excel.Workbook wb = app.Workbooks.Open(matchedFile);
-                    //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\CIC OFF_21_Jul_2025.xlsx");
-                    //Excel.Workbook wb = app.Workbooks.Open(@"D:\iHi\LChart Inputs\Batch-Deliverables\FAN_CASE OFF_04_Jul_2025.xlsx");
-                    //var number1 = "";
-
                     Excel.Worksheet worksheet = wb.Sheets[1];
                     Excel.Worksheet manualWorkSheet = wb.Sheets[3];
-                    //var package = new ExcelPackage(new FileInfo("D:\\iHi\\GBX_Assembly\\Final_Assembly.xlsx"));
-                    //var worksheet = package.Workbook.Worksheets[1];
                     Excel.Range usedRange = worksheet.UsedRange;
                     int rows = usedRange.Rows.Count;
                     int cols = usedRange.Columns.Count;
@@ -2568,9 +2536,9 @@ namespace LChart_Comparison_Tool
 
                     //Row to copy
 
-                    object[] fullRow = new object[colCount];
+                    object[] fullRow = new object[wsReferencecolumnCount];
 
-                    for (int col = 1; col <= colCount; col++)
+                    for (int col = 1; col <= wsReferencecolumnCount; col++)
                     {
                         fullRow[col - 1] = wsReference.Cells[referenceRow, col].Value;
                     }
