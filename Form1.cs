@@ -76,7 +76,7 @@ namespace LChart_Comparison_Tool
         private Queue<(int row, int col)> DownQueue = new();
 
 
-        int newRowToWriteAt = 1;
+        int newRowToWriteAt = 7;
         private string newFilePath = "D:\\newfile.xlsx";
 
         public Form1()
@@ -2453,9 +2453,16 @@ namespace LChart_Comparison_Tool
                     {
                         using (var package1 = new ExcelPackage()) // NEW workbook
                         {
-                            var ws = package1.Workbook.Worksheets.Add("Sheet1");
+                            var newSheet = package1.Workbook.Worksheets.Add("Sheet1");
 
-                            //TODO: Copy headers from reference sheet to new sheet
+                            //Copy headers from reference sheet to new sheet
+
+                            // Determine how many rows and columns to copy
+                            int rowsToCopy = Math.Min(6, wsReference.Dimension.End.Row);
+                            int colsToCopy = wsReference.Dimension.End.Column;
+
+                            // Copy the first 6 rows with styles
+                            wsReference.Cells[1, 1, rowsToCopy, colsToCopy].Copy(newSheet.Cells[1, 1]);
 
                             // Save the new workbook
                             package1.SaveAs(new FileInfo(newFilePath));
@@ -2471,6 +2478,7 @@ namespace LChart_Comparison_Tool
                 // Read each row (starting from row 2 to skip headers if applicable)
                 for (int referenceRow = 7; referenceRow <= wsReferenceRowCount; referenceRow++)
                 {
+                    Console.WriteLine($"\nProcessing Reference Row: {referenceRow}");
                     var blockNumber = wsReference.Cells[referenceRow, 1].Text; // .Text preserves formatting
                     var module = wsReference.Cells[referenceRow, 3].Text;
                     var direction = wsReference.Cells[referenceRow, 4].Text;
@@ -2580,7 +2588,7 @@ namespace LChart_Comparison_Tool
                                 var operationNumber = ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
                                 fullRow[6]=operationNumber; //7th column is Operation No
                                 WriteToNewFile(newRowToWriteAt, fullRow);
-                                newRowToWriteAt = parents.Count + 1;
+                                newRowToWriteAt = newRowToWriteAt + 1;
                             }
                             //parents.Clear();
                         }
@@ -2597,7 +2605,7 @@ namespace LChart_Comparison_Tool
                                 var operationNumber = ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
                                 fullRow[6] = operationNumber; //7th column is Operation No
                                 WriteToNewFile(newRowToWriteAt, fullRow);
-                                newRowToWriteAt = parents.Count + 1;
+                                newRowToWriteAt = newRowToWriteAt + 1;
                             }
                             //parents.Clear();
                         }
