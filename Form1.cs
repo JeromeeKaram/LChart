@@ -2468,9 +2468,7 @@ namespace LChart_Comparison_Tool
                         {
                             var ws = package1.Workbook.Worksheets.Add("Sheet1");
 
-                            // Write initial values
-                            ws.Cells[1, 1].Value = "Hello 1";
-                            ws.Cells[1, 2].Value = "World 2";
+                            //TODO: Copy headers from reference sheet to new sheet
 
                             // Save the new workbook
                             package1.SaveAs(new FileInfo(newFilePath));
@@ -2487,13 +2485,13 @@ namespace LChart_Comparison_Tool
 
 
                 // Read each row (starting from row 2 to skip headers if applicable)
-                for (int referenceRow = 7; referenceRow <= rowCount; referenceRow++)
+                for (int referenceRow = 7; referenceRow <= 7; referenceRow++)
                 {
                     //for (int col = 1; col <= colCount; col++)
                     //{********************************************************************
 
                     //}
-                    var blockNumber = wsReference.Cells[referenceRow, 1].Text; // .Text preserves formatting
+                    var blockNumber = "284";// wsReference.Cells[referenceRow, 1].Text; // .Text preserves formatting
                     var module = wsReference.Cells[referenceRow, 3].Text;
                     var direction = wsReference.Cells[referenceRow, 4].Text;
                     Console.Write($"number-{blockNumber} module-{module} switchh-{direction}");
@@ -2611,7 +2609,8 @@ namespace LChart_Comparison_Tool
                             List<Excel.Range> parents = ParentMergedCells;
                             foreach (var p in parents)
                             {
-                                ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
+                                var operationNumber = ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
+                                fullRow[6]=operationNumber; //7th column is Operation No
                                 WriteToNewFile(newRowToWriteAt, fullRow);
                                 newRowToWriteAt = parents.Count + 1;
                             }
@@ -2627,7 +2626,8 @@ namespace LChart_Comparison_Tool
                             List<Excel.Range> parents = ParentMergedCells;
                             foreach (var p in parents)
                             {
-                                ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
+                                var operationNumber = ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
+                                fullRow[6] = operationNumber; //7th column is Operation No
                                 WriteToNewFile(newRowToWriteAt, fullRow);
                                 newRowToWriteAt = parents.Count + 1;
                             }
@@ -3030,11 +3030,12 @@ namespace LChart_Comparison_Tool
         {
             using (var package = new ExcelPackage(new FileInfo(newFilePath)))
             {
-                var ws = package.Workbook.Worksheets[0];
+                // Ensure at least one worksheet exists
+                var ws = package.Workbook.Worksheets.FirstOrDefault() ?? package.Workbook.Worksheets.Add("Sheet1");
 
-                foreach (var column in columnValues.Select((value, index) => new { value, index }))
+                for (int i = 0; i < columnValues.Length; i++)
                 {
-                    ws.Cells[writeAtRow, column.index + 1].Value = column.value;
+                    ws.Cells[writeAtRow, i + 1].Value = columnValues[i];
                 }
                 package.Save();
             }
