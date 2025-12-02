@@ -17,10 +17,10 @@ using OfficeOpenXml;
 //using MyPDFReader;
 //using OfficeOpenXml;
 
-using OfficeOpenXml.FormulaParsing.Excel.Functions.DateTime;
+//using OfficeOpenXml.FormulaParsing.Excel.Functions.DateTime;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Information;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Logical;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
+//using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
 using OfficeOpenXml.Style;
 
@@ -77,6 +77,7 @@ namespace LChart_Comparison_Tool
 
 
         int newRowToWriteAt = 1;
+        private string newFilePath = "D:\\newfile.xlsx";
 
         public Form1()
         {
@@ -2434,7 +2435,7 @@ namespace LChart_Comparison_Tool
             var filePath = "D:\\iHi\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx";
             using (var package = new ExcelPackage(new FileInfo(filePath)))
             {
-                string newFilePath = "D:\\newfile.xls";
+                //string newFilePath = "D:\\newfile.xlsx";
 
                 //// Get the first worksheet
                 var wsReference = package.Workbook.Worksheets[1];
@@ -2458,27 +2459,24 @@ namespace LChart_Comparison_Tool
                 //Create new excel file
                 try
                 {
+                    //OfficeOpenXml.ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
+
+
                     if (!File.Exists(newFilePath))
                     {
-                        var excel = new Excel.Application();
-                        excel.Visible = false;
+                        using (var package1 = new ExcelPackage()) // NEW workbook
+                        {
+                            var ws = package1.Workbook.Worksheets.Add("Sheet1");
 
-                        Excel.Workbook workbook = excel.Workbooks.Add();
-                        Excel.Worksheet ws = workbook.Sheets[1];
+                            // Write initial values
+                            ws.Cells[1, 1].Value = "Hello 1";
+                            ws.Cells[1, 2].Value = "World 2";
 
-                        ws.Cells[1, 1].Value = "Hello 1";
-                        ws.Cells[1, 2].Value = "World 2";
-
-                        workbook.SaveAs(newFilePath, Excel.XlFileFormat.xlWorkbookNormal);
-
-                        workbook.Close(false);  // <-- important
-                        excel.Quit();
-
-                        // release COM objects
-                        Marshal.ReleaseComObject(ws);
-                        Marshal.ReleaseComObject(workbook);
-                        Marshal.ReleaseComObject(excel);
+                            // Save the new workbook
+                            package1.SaveAs(new FileInfo(newFilePath));
+                        }
                     }
+
                 }
                 catch (Exception ex)
                 {
@@ -2526,6 +2524,7 @@ namespace LChart_Comparison_Tool
                     //var number1 = "";
 
                     Excel.Worksheet worksheet = wb.Sheets[1];
+                    Excel.Worksheet manualWorkSheet = wb.Sheets[3];
                     //var package = new ExcelPackage(new FileInfo("D:\\iHi\\GBX_Assembly\\Final_Assembly.xlsx"));
                     //var worksheet = package.Workbook.Worksheets[1];
                     Excel.Range usedRange = worksheet.UsedRange;
@@ -2612,8 +2611,8 @@ namespace LChart_Comparison_Tool
                             List<Excel.Range> parents = ParentMergedCells;
                             foreach (var p in parents)
                             {
-                                //Console.WriteLine($"Parent Merged Cell Text: {p.Text}");
-                                WriteToNewFile(newFilePath, newRowToWriteAt, fullRow);
+                                ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
+                                WriteToNewFile(newRowToWriteAt, fullRow);
                                 newRowToWriteAt = parents.Count + 1;
                             }
                             //parents.Clear();
@@ -2628,7 +2627,8 @@ namespace LChart_Comparison_Tool
                             List<Excel.Range> parents = ParentMergedCells;
                             foreach (var p in parents)
                             {
-                                WriteToNewFile(newFilePath, newRowToWriteAt, fullRow);
+                                ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
+                                WriteToNewFile(newRowToWriteAt, fullRow);
                                 newRowToWriteAt = parents.Count + 1;
                             }
                             //parents.Clear();
@@ -2636,12 +2636,64 @@ namespace LChart_Comparison_Tool
                     }
                     else
                     {
-                        WriteToNewFile(newFilePath, newRowToWriteAt, fullRow);
+                        WriteToNewFile(newRowToWriteAt, fullRow);
                         newRowToWriteAt = newRowToWriteAt + 1;
                         Console.WriteLine($"❌ Value \"{blockNumber}\" not found in the worksheet.");
                     }
                 }
             }
+        }
+
+        private string ReadOperationNoFromManualSheet(Worksheet manualWorkSheet, string parent)
+        {
+            bool operationNumberFound = false;
+            int operationNumberfoundAtRow = 0;
+            int operationNumberFoundAtColumn = 0;
+
+            // Find last used cell
+            Excel.Range lastCell = manualWorkSheet.Cells.Find(
+                "*",
+                Missing.Value,
+                Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
+                Excel.XlLookAt.xlPart,
+                Excel.XlSearchOrder.xlByRows,
+                Excel.XlSearchDirection.xlPrevious,
+                false,
+                Missing.Value,
+                Missing.Value
+            );
+
+            int lastRow = lastCell != null ? lastCell.Row : 1;
+            int lastCol = lastCell != null ? lastCell.Column : 1;
+
+            for (int rrow = 1; rrow <= lastRow && !operationNumberFound; rrow++)
+            {
+                for (int col = 1; col <= lastCol; col++)
+                {
+                    var cellText = manualWorkSheet.Cells[rrow, col].Text?.Trim();
+                    cellText = cellText.Replace("\r", "")
+               .Replace("\n", "")
+               .Trim();
+
+                    cellText = Convert.ToString(cellText);
+
+                    if (string.Equals(cellText, parent, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"✅ Found \"{parent}\" at Row: {rrow}, Column: {col}");
+                        operationNumberFound = true;
+                        operationNumberfoundAtRow = rrow;
+                        operationNumberFoundAtColumn = col;
+                        break;
+                    }
+                }
+            }
+
+            string operationNumber = "";
+            if (operationNumberFound)
+            {
+                operationNumber = manualWorkSheet.Cells[operationNumberfoundAtRow, 7].Text;
+            }
+            return operationNumber;
         }
 
         public void TraverseDown(int startRow, int startColumn, Worksheet _ws)
@@ -2974,9 +3026,9 @@ namespace LChart_Comparison_Tool
             }
         }
 
-        private void WriteToNewFile(string filePath, int writeAtRow, object[] columnValues)
+        private void WriteToNewFile(int writeAtRow, object[] columnValues)
         {
-            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            using (var package = new ExcelPackage(new FileInfo(newFilePath)))
             {
                 var ws = package.Workbook.Worksheets[0];
 
