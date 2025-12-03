@@ -2445,30 +2445,31 @@ namespace LChart_Comparison_Tool
                 int wsReferencecolumnCount = wsReference.Dimension.Columns;
 
                 Console.WriteLine($"Rows: {wsReferenceRowCount}, Columns: {wsReferencecolumnCount}");
-                
+
                 //Create new excel file
                 try
                 {
-                    if (!File.Exists(newFilePath))
+                    if (File.Exists(newFilePath))
                     {
-                        using (var package1 = new ExcelPackage()) // NEW workbook
-                        {
-                            var newSheet = package1.Workbook.Worksheets.Add("Sheet1");
-
-                            //Copy headers from reference sheet to new sheet
-
-                            // Determine how many rows and columns to copy
-                            int rowsToCopy = Math.Min(6, wsReference.Dimension.End.Row);
-                            int colsToCopy = wsReference.Dimension.End.Column;
-
-                            // Copy the first 6 rows with styles
-                            wsReference.Cells[1, 1, rowsToCopy, colsToCopy].Copy(newSheet.Cells[1, 1]);
-
-                            // Save the new workbook
-                            package1.SaveAs(new FileInfo(newFilePath));
-                        }
+                        File.Delete(newFilePath); // delete old file
                     }
 
+                    using (var package1 = new ExcelPackage()) // NEW workbook
+                    {
+                        var newSheet = package1.Workbook.Worksheets.Add("Sheet1");
+
+                        //Copy headers from reference sheet to new sheet
+
+                        // Determine how many rows and columns to copy
+                        int rowsToCopy = Math.Min(6, wsReference.Dimension.End.Row);
+                        int colsToCopy = wsReference.Dimension.End.Column;
+
+                        // Copy the first 6 rows with styles
+                        wsReference.Cells[1, 1, rowsToCopy, colsToCopy].Copy(newSheet.Cells[1, 1]);
+
+                        // Save the new workbook
+                        package1.SaveAs(new FileInfo(newFilePath));
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -2482,6 +2483,12 @@ namespace LChart_Comparison_Tool
                     var blockNumber = wsReference.Cells[referenceRow, 1].Text; // .Text preserves formatting
                     var module = wsReference.Cells[referenceRow, 3].Text;
                     var direction = wsReference.Cells[referenceRow, 4].Text;
+
+                    if (direction == "ON")
+                    {
+                        continue;
+                    }
+
                     Console.Write($"number-{blockNumber} module-{module} switchh-{direction}");
 
                     string folderPath = @"D:\iHi\LChart Inputs\Batch-Deliverables";
@@ -2586,11 +2593,11 @@ namespace LChart_Comparison_Tool
                             foreach (var p in parents)
                             {
                                 var operationNumber = ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
-                                fullRow[6]=operationNumber; //7th column is Operation No
+                                fullRow[7] = operationNumber; //8th column is Parent Operation No
                                 WriteToNewFile(newRowToWriteAt, fullRow);
                                 newRowToWriteAt = newRowToWriteAt + 1;
                             }
-                            //parents.Clear();
+                            parents.Clear();
                         }
                         else if (direction == "OFF")
                         {
@@ -2603,11 +2610,11 @@ namespace LChart_Comparison_Tool
                             foreach (var p in parents)
                             {
                                 var operationNumber = ReadOperationNoFromManualSheet(manualWorkSheet, p.Text);
-                                fullRow[6] = operationNumber; //7th column is Operation No
+                                fullRow[7] = operationNumber; //8th column is Parent Operation No
                                 WriteToNewFile(newRowToWriteAt, fullRow);
                                 newRowToWriteAt = newRowToWriteAt + 1;
                             }
-                            //parents.Clear();
+                            parents.Clear();
                         }
                     }
                     else
