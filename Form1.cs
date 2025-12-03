@@ -2647,27 +2647,23 @@ namespace LChart_Comparison_Tool
             );
 
             int lastRow = lastCell != null ? lastCell.Row : 1;
-            int lastCol = lastCell != null ? lastCell.Column : 1;
 
             for (int rrow = 1; rrow <= lastRow && !operationNumberFound; rrow++)
             {
-                for (int col = 1; col <= lastCol; col++)
+                var cellText = manualWorkSheet.Cells[rrow, 1].Text?.Trim();
+                cellText = cellText.Replace("\r", "")
+           .Replace("\n", "")
+           .Trim();
+
+                cellText = Convert.ToString(cellText);
+
+                if (string.Equals(cellText, parent, StringComparison.OrdinalIgnoreCase))
                 {
-                    var cellText = manualWorkSheet.Cells[rrow, col].Text?.Trim();
-                    cellText = cellText.Replace("\r", "")
-               .Replace("\n", "")
-               .Trim();
-
-                    cellText = Convert.ToString(cellText);
-
-                    if (string.Equals(cellText, parent, StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine($"✅ Found \"{parent}\" at Row: {rrow}, Column: {col}");
-                        operationNumberFound = true;
-                        operationNumberfoundAtRow = rrow;
-                        operationNumberFoundAtColumn = col;
-                        break;
-                    }
+                    Console.WriteLine($"✅ Found \"{parent}\" at Row: {rrow}, Column: {1}");
+                    operationNumberFound = true;
+                    operationNumberfoundAtRow = rrow;
+                    operationNumberFoundAtColumn = 1;
+                    break;
                 }
             }
 
