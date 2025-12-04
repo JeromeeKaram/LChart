@@ -44,7 +44,9 @@ namespace LChart_Comparison_Tool
             this.label2 = new System.Windows.Forms.Label();
             this.pictureBox5 = new System.Windows.Forms.PictureBox();
             this.LChart_Comparison = new System.Windows.Forms.TabPage();
-            this.txtBlockNumber = new System.Windows.Forms.TextBox();
+            this.txtOutputFolder = new System.Windows.Forms.TextBox();
+            this.btnOutputPathBrowse = new System.Windows.Forms.Button();
+            this.label17 = new System.Windows.Forms.Label();
             this.btnParentChild = new System.Windows.Forms.Button();
             this.label16 = new System.Windows.Forms.Label();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
@@ -70,9 +72,6 @@ namespace LChart_Comparison_Tool
             this.label5 = new System.Windows.Forms.Label();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
-            this.cmbDirection = new System.Windows.Forms.ComboBox();
-            this.btnBrowse = new System.Windows.Forms.Button();
-            this.txtFilePath = new System.Windows.Forms.TextBox();
             this.Help.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox5)).BeginInit();
             this.LChart_Comparison.SuspendLayout();
@@ -222,10 +221,9 @@ namespace LChart_Comparison_Tool
             // 
             this.LChart_Comparison.BackgroundImage = global::LChart_Comparison_Tool.Properties.Resources.Ticket_Maker;
             this.LChart_Comparison.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.LChart_Comparison.Controls.Add(this.txtFilePath);
-            this.LChart_Comparison.Controls.Add(this.btnBrowse);
-            this.LChart_Comparison.Controls.Add(this.cmbDirection);
-            this.LChart_Comparison.Controls.Add(this.txtBlockNumber);
+            this.LChart_Comparison.Controls.Add(this.txtOutputFolder);
+            this.LChart_Comparison.Controls.Add(this.btnOutputPathBrowse);
+            this.LChart_Comparison.Controls.Add(this.label17);
             this.LChart_Comparison.Controls.Add(this.btnParentChild);
             this.LChart_Comparison.Controls.Add(this.label16);
             this.LChart_Comparison.Controls.Add(this.progressBar1);
@@ -249,12 +247,47 @@ namespace LChart_Comparison_Tool
             this.LChart_Comparison.UseVisualStyleBackColor = true;
             this.LChart_Comparison.Click += new System.EventHandler(this.Form1_Checklist_Click);
             // 
-            // txtBlockNumber
+            // txtOutputFolder
             // 
-            this.txtBlockNumber.Location = new System.Drawing.Point(36, 232);
-            this.txtBlockNumber.Name = "txtBlockNumber";
-            this.txtBlockNumber.Size = new System.Drawing.Size(100, 27);
-            this.txtBlockNumber.TabIndex = 37;
+            this.txtOutputFolder.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtOutputFolder.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(85)))), ((int)(((byte)(166)))), ((int)(((byte)(215)))));
+            this.txtOutputFolder.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txtOutputFolder.Location = new System.Drawing.Point(195, 161);
+            this.txtOutputFolder.Multiline = true;
+            this.txtOutputFolder.Name = "txtOutputFolder";
+            this.txtOutputFolder.Size = new System.Drawing.Size(484, 50);
+            this.txtOutputFolder.TabIndex = 39;
+            // 
+            // btnOutputPathBrowse
+            // 
+            this.btnOutputPathBrowse.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnOutputPathBrowse.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(151)))), ((int)(((byte)(148)))), ((int)(((byte)(26)))));
+            this.btnOutputPathBrowse.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnOutputPathBrowse.FlatAppearance.BorderSize = 0;
+            this.btnOutputPathBrowse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnOutputPathBrowse.Font = new System.Drawing.Font("Arial Black", 16F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnOutputPathBrowse.ForeColor = System.Drawing.Color.Transparent;
+            this.btnOutputPathBrowse.Location = new System.Drawing.Point(684, 161);
+            this.btnOutputPathBrowse.Name = "btnOutputPathBrowse";
+            this.btnOutputPathBrowse.Size = new System.Drawing.Size(51, 50);
+            this.btnOutputPathBrowse.TabIndex = 38;
+            this.btnOutputPathBrowse.Text = "......";
+            this.btnOutputPathBrowse.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnOutputPathBrowse.UseVisualStyleBackColor = false;
+            this.btnOutputPathBrowse.Click += new System.EventHandler(this.btnOutputPathBrowse_Click);
+            // 
+            // label17
+            // 
+            this.label17.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(202)))), ((int)(((byte)(182)))), ((int)(((byte)(226)))));
+            this.label17.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.label17.Font = new System.Drawing.Font("Yu Gothic UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label17.Location = new System.Drawing.Point(33, 161);
+            this.label17.Name = "label17";
+            this.label17.Size = new System.Drawing.Size(162, 50);
+            this.label17.TabIndex = 37;
+            this.label17.Text = "Output Files Location";
+            this.label17.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // btnParentChild
             // 
@@ -292,7 +325,7 @@ namespace LChart_Comparison_Tool
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(85)))), ((int)(((byte)(166)))), ((int)(((byte)(215)))));
             this.textBox1.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.textBox1.Location = new System.Drawing.Point(194, 153);
+            this.textBox1.Location = new System.Drawing.Point(194, 103);
             this.textBox1.Multiline = true;
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(484, 50);
@@ -307,7 +340,7 @@ namespace LChart_Comparison_Tool
             this.comboBox1.ForeColor = System.Drawing.SystemColors.InfoText;
             this.comboBox1.FormattingEnabled = true;
             this.comboBox1.ItemHeight = 28;
-            this.comboBox1.Location = new System.Drawing.Point(194, 46);
+            this.comboBox1.Location = new System.Drawing.Point(194, 5);
             this.comboBox1.Margin = new System.Windows.Forms.Padding(2);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(388, 34);
@@ -323,7 +356,7 @@ namespace LChart_Comparison_Tool
             this.InputBrowse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.InputBrowse.Font = new System.Drawing.Font("Arial Black", 16F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.InputBrowse.ForeColor = System.Drawing.Color.Transparent;
-            this.InputBrowse.Location = new System.Drawing.Point(682, 89);
+            this.InputBrowse.Location = new System.Drawing.Point(682, 48);
             this.InputBrowse.Name = "InputBrowse";
             this.InputBrowse.Size = new System.Drawing.Size(52, 48);
             this.InputBrowse.TabIndex = 31;
@@ -338,7 +371,7 @@ namespace LChart_Comparison_Tool
             | System.Windows.Forms.AnchorStyles.Right)));
             this.InputPath.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(85)))), ((int)(((byte)(166)))), ((int)(((byte)(215)))));
             this.InputPath.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.InputPath.Location = new System.Drawing.Point(194, 89);
+            this.InputPath.Location = new System.Drawing.Point(194, 48);
             this.InputPath.Multiline = true;
             this.InputPath.Name = "InputPath";
             this.InputPath.Size = new System.Drawing.Size(484, 48);
@@ -350,7 +383,7 @@ namespace LChart_Comparison_Tool
             this.label13.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(202)))), ((int)(((byte)(182)))), ((int)(((byte)(226)))));
             this.label13.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.label13.Font = new System.Drawing.Font("Yu Gothic UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label13.Location = new System.Drawing.Point(32, 89);
+            this.label13.Location = new System.Drawing.Point(32, 48);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(162, 48);
             this.label13.TabIndex = 29;
@@ -366,7 +399,7 @@ namespace LChart_Comparison_Tool
             this.BrowseBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.BrowseBtn.Font = new System.Drawing.Font("Arial Black", 16F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.BrowseBtn.ForeColor = System.Drawing.Color.Transparent;
-            this.BrowseBtn.Location = new System.Drawing.Point(683, 153);
+            this.BrowseBtn.Location = new System.Drawing.Point(683, 103);
             this.BrowseBtn.Name = "BrowseBtn";
             this.BrowseBtn.Size = new System.Drawing.Size(51, 50);
             this.BrowseBtn.TabIndex = 28;
@@ -380,7 +413,7 @@ namespace LChart_Comparison_Tool
             this.label9.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(202)))), ((int)(((byte)(182)))), ((int)(((byte)(226)))));
             this.label9.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.label9.Font = new System.Drawing.Font("Yu Gothic UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label9.Location = new System.Drawing.Point(33, 46);
+            this.label9.Location = new System.Drawing.Point(33, 5);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(160, 28);
             this.label9.TabIndex = 24;
@@ -429,7 +462,7 @@ namespace LChart_Comparison_Tool
             this.label12.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(202)))), ((int)(((byte)(182)))), ((int)(((byte)(226)))));
             this.label12.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.label12.Font = new System.Drawing.Font("Yu Gothic UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label12.Location = new System.Drawing.Point(32, 153);
+            this.label12.Location = new System.Drawing.Point(32, 103);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(162, 50);
             this.label12.TabIndex = 26;
@@ -554,34 +587,6 @@ namespace LChart_Comparison_Tool
             this.pictureBox2.TabIndex = 21;
             this.pictureBox2.TabStop = false;
             // 
-            // cmbDirection
-            // 
-            this.cmbDirection.FormattingEnabled = true;
-            this.cmbDirection.Items.AddRange(new object[] {
-            "OFF",
-            "ON"});
-            this.cmbDirection.Location = new System.Drawing.Point(142, 232);
-            this.cmbDirection.Name = "cmbDirection";
-            this.cmbDirection.Size = new System.Drawing.Size(80, 28);
-            this.cmbDirection.TabIndex = 38;
-            // 
-            // btnBrowse
-            // 
-            this.btnBrowse.Location = new System.Drawing.Point(400, 237);
-            this.btnBrowse.Name = "btnBrowse";
-            this.btnBrowse.Size = new System.Drawing.Size(75, 34);
-            this.btnBrowse.TabIndex = 39;
-            this.btnBrowse.Text = "Browse";
-            this.btnBrowse.UseVisualStyleBackColor = true;
-            this.btnBrowse.Click += new System.EventHandler(this.btnBrowse_Click);
-            // 
-            // txtFilePath
-            // 
-            this.txtFilePath.Location = new System.Drawing.Point(228, 235);
-            this.txtFilePath.Name = "txtFilePath";
-            this.txtFilePath.Size = new System.Drawing.Size(166, 27);
-            this.txtFilePath.TabIndex = 40;
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -650,9 +655,8 @@ namespace LChart_Comparison_Tool
         private Label label16;
         private Label label13;
         private Button btnParentChild;
-        private TextBox txtBlockNumber;
-        private ComboBox cmbDirection;
-        private TextBox txtFilePath;
-        private Button btnBrowse;
+        private TextBox txtOutputFolder;
+        private Button btnOutputPathBrowse;
+        private Label label17;
     }
 }
