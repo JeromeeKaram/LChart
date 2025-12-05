@@ -2433,7 +2433,7 @@ namespace LChart_Comparison_Tool
         //}
 
         private void btnParentChild_Click(object sender, EventArgs e)
-        {   
+        {
             var startTime = DateTime.Now;
             if (string.IsNullOrEmpty(txtOutputFolder.Text))
             {
@@ -2492,7 +2492,7 @@ namespace LChart_Comparison_Tool
                 //}
 
                 // Create ONE Excel application outside the loop
-                
+
 
                 var groupedList = new List<ItemGroup>();
                 try
@@ -2509,15 +2509,18 @@ namespace LChart_Comparison_Tool
                         });
                     }
 
-                                groupedList = rows
-                .GroupBy(r => new { r.Module, r.Direction })
-                .Select(g => new ItemGroup
-                {
-                    ModuleName = $"{g.Key.Module} {g.Key.Direction}",
-                    Direction = g.Key.Direction,
-                    BlockNumbers = g.Select(x => x.BlockNumber).ToList()
-                })
-                .ToList();
+                    groupedList = rows
+    .GroupBy(r => new { r.Module, r.Direction })
+    .Select(g => new ItemGroup
+    {
+        ModuleName = $"{g.Key.Module} {g.Key.Direction}",
+        Direction = g.Key.Direction,
+        Blocks = g.Select(x => new BlockItem
+        {
+            BlockNumber = x.BlockNumber
+        }).ToList()
+    })
+    .ToList();
                 }
                 catch (Exception ex)
                 {
@@ -2530,63 +2533,73 @@ namespace LChart_Comparison_Tool
                 app.Visible = false;
                 app.DisplayAlerts = false;
 
-                foreach (var group in groupedList)
+                try
                 {
-                    Excel.Workbook workbookModule = null;
-                    Excel.Worksheet worksheetLChart = null;
-                    Excel.Worksheet workSheetManual = null;
-                    Excel.Range usedRangeLChart = null;
-
-                    Console.WriteLine($"\nProcessing Group: {group.ModuleName}");
-
-                    var matchedFile = files
-                   .Where(f => Path.GetFileName(f).StartsWith($"{group.ModuleName}", StringComparison.OrdinalIgnoreCase))
-                   .FirstOrDefault();
-
-                    try
+                    foreach (var group in groupedList)
                     {
-                        workbookModule = app.Workbooks.Open(matchedFile);
+                        if (!FilesAreSearchCompatible(group.ModuleName)) continue;
 
-                        foreach (var blockNumber in group.BlockNumbers)
+                        Excel.Workbook workbookModule = null;
+                        Excel.Worksheet worksheetLChart = null;
+                        Excel.Worksheet workSheetManual = null;
+                        Excel.Range usedRangeLChart = null;
+
+                        Console.WriteLine($"\nProcessing Group: {group.ModuleName}");
+
+                        var matchedFile = files
+                       .Where(f => Path.GetFileName(f).StartsWith($"{group.ModuleName}", StringComparison.OrdinalIgnoreCase))
+                       .FirstOrDefault();
+
+                        if (matchedFile == null)
                         {
-                            if (string.IsNullOrEmpty(blockNumber))
+                            Console.WriteLine($"❌ No file found for: {group.ModuleName}");
+                            continue;  // ← DO NOT STOP THE LOOP
+                        }
+
+                        try
+                        {
+                            workbookModule = app.Workbooks.Open(matchedFile);
+
+                            foreach (var block in group.Blocks)
                             {
-                                continue;
-                            }
+                                if (string.IsNullOrEmpty(block.BlockNumber))
+                                {
+                                    continue;
+                                }
 
-                            string direction = group.Direction;
-                            worksheetLChart = workbookModule.Sheets[1];
-                            usedRangeLChart = worksheetLChart.UsedRange;
+                                string direction = group.Direction;
+                                worksheetLChart = workbookModule.Sheets[1];
+                                usedRangeLChart = worksheetLChart.UsedRange;
 
-                            int cellToTheLeft = 0;
-                            int topCell = 0;
-                            int bottomCell = 0;
+                                int cellToTheLeft = 0;
+                                int topCell = 0;
+                                int bottomCell = 0;
 
-                            List<string> move = new List<string>();
-                            List<Excel.Range> mergedRanges = new List<Excel.Range>();
+                                List<string> move = new List<string>();
+                                List<Excel.Range> mergedRanges = new List<Excel.Range>();
 
-                            // Find last used cell
-                            Excel.Range LChartLastCell = worksheetLChart.Cells.Find(
-                                "*",
-                                Missing.Value,
-                                Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
-                                Excel.XlLookAt.xlPart,
-                                Excel.XlSearchOrder.xlByRows,
-                                Excel.XlSearchDirection.xlPrevious,
-                                false,
-                                Missing.Value,
-                                Missing.Value
-                            );
+                                // Find last used cell
+                                Excel.Range LChartLastCell = worksheetLChart.Cells.Find(
+                                    "*",
+                                    Missing.Value,
+                                    Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
+                                    Excel.XlLookAt.xlPart,
+                                    Excel.XlSearchOrder.xlByRows,
+                                    Excel.XlSearchDirection.xlPrevious,
+                                    false,
+                                    Missing.Value,
+                                    Missing.Value
+                                );
 
-                            int LChartLastRow = LChartLastCell != null ? LChartLastCell.Row : 1;
-                            int LChartLastColumn = LChartLastCell != null ? LChartLastCell.Column : 1;
+                                int LChartLastRow = LChartLastCell != null ? LChartLastCell.Row : 1;
+                                int LChartLastColumn = LChartLastCell != null ? LChartLastCell.Column : 1;
 
-                            bool found = false;
-                            int foundAtRow = 0;
-                            int foundAtColumn = 0;
+                                bool found = false;
+                                int foundAtRow = 0;
+                                int foundAtColumn = 0;
 
-                            if (FilesAreSearchCompatible(group.ModuleName))
-                            {
+                                //if (FilesAreSearchCompatible(group.ModuleName))
+                                //{
                                 for (int rrow = 1; rrow <= LChartLastRow && !found; rrow++)
                                 {
                                     for (int col = 1; col <= LChartLastColumn; col++)
@@ -2598,9 +2611,9 @@ namespace LChart_Comparison_Tool
 
                                         cellText = Convert.ToString(cellText);
 
-                                        if (string.Equals(cellText, blockNumber, StringComparison.OrdinalIgnoreCase))
+                                        if (string.Equals(cellText, block.BlockNumber, StringComparison.OrdinalIgnoreCase))
                                         {
-                                            Console.WriteLine($"✅ Found \"{blockNumber}\" at Row: {rrow}, Column: {col}");
+                                            Console.WriteLine($"✅ Found \"{block.BlockNumber}\" at Row: {rrow}, Column: {col}");
                                             found = true;
                                             foundAtRow = rrow;
                                             foundAtColumn = col;
@@ -2608,68 +2621,97 @@ namespace LChart_Comparison_Tool
                                         }
                                     }
                                 }
-                            }
+                                //}
 
-                            if (found)
+                                if (found)
+                                {
+                                    int downCellRow = 0;
+                                    int downCellColumn = 0;
+                                    int downLineStartsAtRow = 0;
+                                    int downLineStartsAtColumn = 0;
+
+                                    int upCellRow = 0;
+                                    int upCellColumn = 0;
+                                    int upLineStartsAtRow = 0;
+                                    int upLineStartsAtColumn = 0;
+
+                                    workSheetManual = workbookModule.Sheets[3];
+
+                                    if (direction == "ON")
+                                    {
+                                        downCellRow = foundAtRow + 1;
+                                        downCellColumn = foundAtColumn - 1;
+                                        downLineStartsAtRow = foundAtRow + 4;
+                                        downLineStartsAtColumn = foundAtColumn - 2;
+                                        TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheetLChart);
+                                        List<Excel.Range> parents = ParentMergedCells;
+                                        BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
+                                        foreach (var p in parents)
+                                        {
+                                            var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
+                                            // ⭐ Add the ParentInfo
+                                            blockItem.Parents.Add(new ParentInfo
+                                            {
+                                                ParentNumber = p.Text,
+                                                ParentOperationNumber = operationNumber
+                                            });
+                                            Marshal.ReleaseComObject(p);
+                                        }
+                                        parents.Clear();
+                                    }
+                                    else if (direction == "OFF")
+                                    {
+                                        upCellRow = foundAtRow;
+                                        upCellColumn = foundAtColumn - 1;
+                                        upLineStartsAtRow = foundAtRow - 1;
+                                        upLineStartsAtColumn = foundAtColumn - 2;
+                                        TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheetLChart);
+                                        List<Excel.Range> parents = ParentMergedCells;
+                                        BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
+                                        foreach (var p in parents)
+                                        {
+                                            var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
+                                            // ⭐ Add the ParentInfo
+                                            blockItem.Parents.Add(new ParentInfo
+                                            {
+                                                ParentNumber = p.Text,
+                                                ParentOperationNumber = operationNumber
+                                            });
+                                            Marshal.ReleaseComObject(p);
+                                        }
+                                        parents.Clear();
+                                    }
+                                }
+                            }
+                            //MessageBox.Show("Finished processing Parent-Child relationships.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("ERROR: " + ex.Message);
+                        }
+                        finally
+                        {
+                            // Close workbook safely
+                            if (workbookModule != null)
                             {
-                                int downCellRow = 0;
-                                int downCellColumn = 0;
-                                int downLineStartsAtRow = 0;
-                                int downLineStartsAtColumn = 0;
-
-                                int upCellRow = 0;
-                                int upCellColumn = 0;
-                                int upLineStartsAtRow = 0;
-                                int upLineStartsAtColumn = 0;
-
-                                workSheetManual = workbookModule.Sheets[3];
-
-                                if (direction == "ON")
-                                {
-                                    downCellRow = foundAtRow + 1;
-                                    downCellColumn = foundAtColumn - 1;
-                                    downLineStartsAtRow = foundAtRow + 4;
-                                    downLineStartsAtColumn = foundAtColumn - 2;
-                                    TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheetLChart);
-                                    List<Excel.Range> parents = ParentMergedCells;
-                                    foreach (var p in parents)
-                                    {
-                                        var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
-                                        Marshal.ReleaseComObject(p);
-                                    }
-                                    parents.Clear();
-                                }
-                                else if (direction == "OFF")
-                                {
-                                    upCellRow = foundAtRow;
-                                    upCellColumn = foundAtColumn - 1;
-                                    upLineStartsAtRow = foundAtRow - 1;
-                                    upLineStartsAtColumn = foundAtColumn - 2;
-                                    TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheetLChart);
-                                    List<Excel.Range> parents = ParentMergedCells;
-                                    foreach (var p in parents)
-                                    {
-                                        var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
-                                        Marshal.ReleaseComObject(p);
-                                    }
-                                    parents.Clear();
-                                }
+                                workbookModule.Close(false);
+                                Marshal.ReleaseComObject(workbookModule);
                             }
+
+                            if (worksheetLChart != null) Marshal.ReleaseComObject(worksheetLChart);
+                            if (workSheetManual != null) Marshal.ReleaseComObject(workSheetManual);
                         }
                     }
-                    catch (Exception exception)
-                    {
-                        Console.WriteLine(exception.Message);
-                    }
-
-                    finally
-                    {
-                        //wb.Close(false);
-                        Marshal.ReleaseComObject(worksheetLChart);
-                        //Marshal.ReleaseComObject(wb);
-                    }
                 }
+                finally
+                {
+                    // Quit Excel only AFTER ALL groups
+                    app.Quit();
+                    Marshal.ReleaseComObject(app);
 
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                }
             }
             var endTime = DateTime.Now;
             Console.WriteLine($"Start Time : {startTime}");

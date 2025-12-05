@@ -9,7 +9,8 @@ namespace LChart_Comparison_Tool;
 public class ItemGroup
 {
     public string ModuleName { get; set; }      // Combined Column2 + Column3
-    public List<string> BlockNumbers { get; set; } = new();
+    //public List<string> BlockNumbers { get; set; } = new();
     public string Direction { get; set; }
+    public List<BlockItem> Blocks { get; set; } = new();
 }
 

@@ -76,6 +76,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ParentInfo.cs" />
+    <Compile Include="BlockItem.cs" />
     <Compile Include="ItemGroup.cs" />
     <Compile Include="ExcelRow.cs" />
     <Compile Include="ParentNode.cs" />
