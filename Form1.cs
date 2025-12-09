@@ -1,77 +1,28 @@
-﻿
-using ADOX;
-using LChart_Comparison_Tool;
-using Microsoft.Office.Core;
-using Microsoft.Office.Interop.Excel;
+﻿using Microsoft.Office.Core;
 using Microsoft.Office.Interop.PowerPoint;
-using Microsoft.VisualBasic.ApplicationServices;
-using Microsoft.VisualBasic.Devices;
 using Microsoft.WindowsAPICodePack.Dialogs;
-using Microsoft.WindowsAPICodePack.Shell;
-using MS.WindowsAPICodePack.Internal;
 using OfficeOpenXml;
-
-
-
-
-//using MyPDFReader;
-//using OfficeOpenXml;
-
-//using OfficeOpenXml.FormulaParsing.Excel.Functions.DateTime;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Information;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Logical;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.RefAndLookup;
-
-//using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
-using OfficeOpenXml.Style;
-
-//using OpenQA.Selenium;
-//using OpenQA.Selenium.Chrome;
-//using OpenQA.Selenium.Support.UI;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.ComponentModel.Composition.Primitives;
-using System.Data;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Messaging;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Web.UI;
-using System.Web.UI.WebControls;
-using System.Web.UI.WebControls.WebParts;
 using System.Windows.Forms;
-using System.Xml.Linq;
-using static System.Collections.Specialized.BitVector32;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
-
-//using static WindowsFormsApp1.Cleaning_Ticket_Database;
 using Application = Microsoft.Office.Interop.PowerPoint.Application;
-using Excel = Microsoft.Office.Interop.Excel;
-//using Keys = OpenQA.Selenium.Keys;
 using Point = System.Drawing.Point;
 
 namespace LChart_Comparison_Tool
 {
     public partial class Form1 : Form
     {
-        List<Excel.Range> navigateLeft = new List<Excel.Range>();
-        List<Excel.Range> navigateRight = new List<Excel.Range>();
-        List<Excel.Range> navigateUp = new List<Excel.Range>();
-        List<Excel.Range> navigateDown = new List<Excel.Range>();
+        List<ExcelRange> navigateLeft = new List<ExcelRange>();
+        List<ExcelRange> navigateRight = new List<ExcelRange>();
+        List<ExcelRange> navigateUp = new List<ExcelRange>();
+        List<ExcelRange> navigateDown = new List<ExcelRange>();
 
-        public List<Excel.Range> ParentMergedCells = new();
+        public List<ExcelRange> ParentMergedCells = new();
 
         // Internal queues → BFS recursion
         private Queue<(int row, int col)> UpQueue = new();
@@ -2453,7 +2404,6 @@ namespace LChart_Comparison_Tool
                 return;
             }
 
-            //var package = new ExcelPackage(new FileInfo("C:\\Users\\ga80358\\Downloads\\LChart Inputs\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx"));
             var sourceParentChildMaster = textBox1.Text;//"D:\\iHi\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx";
 
             var groupedList = new List<ItemGroup>();
@@ -2509,20 +2459,16 @@ namespace LChart_Comparison_Tool
 
             string[] files = Directory.GetFiles(InputPath.Text);
 
-            Excel.Application app = new Excel.Application();
-            app.Visible = false;
-            app.DisplayAlerts = false;
-
             try
             {
                 foreach (var group in groupedList)
                 {
                     if (!FilesAreSearchCompatible(group.ModuleName)) continue;
 
-                    Excel.Workbook workbookModule = null;
-                    Excel.Worksheet worksheetLChart = null;
-                    Excel.Worksheet workSheetManual = null;
-                    Excel.Range usedRangeLChart = null;
+                    ExcelWorkbook workbookModule = null;
+                    ExcelWorksheet worksheetLChart = null;
+                    ExcelWorksheet workSheetManual = null;
+                    ExcelRange usedRangeLChart = null;
 
                     Console.WriteLine($"\nProcessing Group: {group.ModuleName}");
 
@@ -2538,7 +2484,8 @@ namespace LChart_Comparison_Tool
 
                     try
                     {
-                        workbookModule = app.Workbooks.Open(matchedFile);
+                        var package = new ExcelPackage(new FileInfo(matchedFile));
+                        workbookModule = package.Workbook;
 
                         foreach (var block in group.Blocks)
                         {
@@ -2547,32 +2494,24 @@ namespace LChart_Comparison_Tool
                                 continue;
                             }
 
-                            string direction = group.Direction;
-                            worksheetLChart = workbookModule.Sheets[1];
-                            usedRangeLChart = worksheetLChart.UsedRange;
+                            string direction = "OFF";// group.Direction;
+                            worksheetLChart = workbookModule.Worksheets[1];
+                            usedRangeLChart = worksheetLChart.Cells[
+    worksheetLChart.Dimension.Start.Row,
+    worksheetLChart.Dimension.Start.Column,
+    worksheetLChart.Dimension.End.Row,
+    worksheetLChart.Dimension.End.Column
+];
 
                             int cellToTheLeft = 0;
                             int topCell = 0;
                             int bottomCell = 0;
 
                             List<string> move = new List<string>();
-                            List<Excel.Range> mergedRanges = new List<Excel.Range>();
+                            List<ExcelRange> mergedRanges = new List<ExcelRange>();
 
-                            // Find last used cell
-                            Excel.Range LChartLastCell = worksheetLChart.Cells.Find(
-                                "*",
-                                Missing.Value,
-                                Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
-                                Excel.XlLookAt.xlPart,
-                                Excel.XlSearchOrder.xlByRows,
-                                Excel.XlSearchDirection.xlPrevious,
-                                false,
-                                Missing.Value,
-                                Missing.Value
-                            );
-
-                            int LChartLastRow = LChartLastCell != null ? LChartLastCell.Row : 1;
-                            int LChartLastColumn = LChartLastCell != null ? LChartLastCell.Column : 1;
+                            int LChartLastRow = worksheetLChart.Dimension?.End.Row ?? 1;
+                            int LChartLastColumn = worksheetLChart.Dimension?.End.Column ?? 1;
 
                             bool found = false;
                             int foundAtRow = 0;
@@ -2589,7 +2528,7 @@ namespace LChart_Comparison_Tool
 
                                     cellText = Convert.ToString(cellText);
 
-                                    if (string.Equals(cellText, block.BlockNumber, StringComparison.OrdinalIgnoreCase))
+                                    if (string.Equals(cellText, "284", StringComparison.OrdinalIgnoreCase))
                                     {
                                         Console.WriteLine($"✅ Found \"{block.BlockNumber}\" at Row: {rrow}, Column: {col}");
                                         found = true;
@@ -2612,7 +2551,7 @@ namespace LChart_Comparison_Tool
                                 int upLineStartsAtRow = 0;
                                 int upLineStartsAtColumn = 0;
 
-                                workSheetManual = workbookModule.Sheets[3];
+                                workSheetManual = workbookModule.Worksheets[3];
 
                                 if (direction == "ON")
                                 {
@@ -2621,7 +2560,7 @@ namespace LChart_Comparison_Tool
                                     downLineStartsAtRow = foundAtRow + 4;
                                     downLineStartsAtColumn = foundAtColumn - 2;
                                     TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheetLChart);
-                                    List<Excel.Range> parents = ParentMergedCells;
+                                    List<ExcelRange> parents = ParentMergedCells;
                                     BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
                                     foreach (var p in parents)
                                     {
@@ -2643,7 +2582,7 @@ namespace LChart_Comparison_Tool
                                     upLineStartsAtRow = foundAtRow - 1;
                                     upLineStartsAtColumn = foundAtColumn - 2;
                                     TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheetLChart);
-                                    List<Excel.Range> parents = ParentMergedCells;
+                                    List<ExcelRange> parents = ParentMergedCells;
                                     BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
                                     foreach (var p in parents)
                                     {
@@ -2667,22 +2606,22 @@ namespace LChart_Comparison_Tool
                     }
                     finally
                     {
-                        // Close workbook safely
-                        if (workbookModule != null)
-                        {
-                            workbookModule.Close(false);
-                            Marshal.ReleaseComObject(workbookModule);
-                        }
-
-                        if (worksheetLChart != null) Marshal.ReleaseComObject(worksheetLChart);
-                        if (workSheetManual != null) Marshal.ReleaseComObject(workSheetManual);
                     }
                 }
 
                 // After processing all groups, create output Excel file and update its H Column (Parent Operation No)
 
                 string copiedFile = Path.Combine(outputFolder, "newFile.xlsx");
-                File.Copy(sourceParentChildMaster, copiedFile, true);
+
+                // Delete if already exists
+                if (File.Exists(copiedFile))
+                {
+                    File.Delete(copiedFile);
+                }
+
+                // Copy the new file
+                File.Copy(sourceParentChildMaster, copiedFile);
+
 
                 using (var package = new ExcelPackage(new FileInfo(copiedFile)))
                 {
@@ -2706,12 +2645,6 @@ namespace LChart_Comparison_Tool
             }
             finally
             {
-                // Quit Excel only AFTER ALL groups
-                app.Quit();
-                Marshal.ReleaseComObject(app);
-
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
             }
             //}
             var endTime = DateTime.Now;
@@ -2729,26 +2662,13 @@ namespace LChart_Comparison_Tool
             return true;
         }
 
-        private string ReadOperationNoFromManualSheet(Worksheet manualWorkSheet, string parent)
+        private string ReadOperationNoFromManualSheet(ExcelWorksheet manualWorkSheet, string parent)
         {
             bool operationNumberFound = false;
             int operationNumberfoundAtRow = 0;
             int operationNumberFoundAtColumn = 0;
 
-            // Find last used cell
-            Excel.Range lastCell = manualWorkSheet.Cells.Find(
-                "*",
-                Missing.Value,
-                Excel.XlFindLookIn.xlFormulas,    // include formulas and constants
-                Excel.XlLookAt.xlPart,
-                Excel.XlSearchOrder.xlByRows,
-                Excel.XlSearchDirection.xlPrevious,
-                false,
-                Missing.Value,
-                Missing.Value
-            );
-
-            int lastRow = lastCell != null ? lastCell.Row : 1;
+            int lastRow = manualWorkSheet.Dimension?.End.Row ?? 1;
 
             for (int rrow = 1; rrow <= lastRow && !operationNumberFound; rrow++)
             {
@@ -2777,7 +2697,7 @@ namespace LChart_Comparison_Tool
             return operationNumber;
         }
 
-        public void TraverseDown(int startRow, int startColumn, Worksheet _ws)
+        public void TraverseDown(int startRow, int startColumn, ExcelWorksheet _ws)
         {
             DownQueue.Enqueue((startRow, startColumn));
 
@@ -2791,7 +2711,7 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  MAIN ENTRY POINT
         // =======================================================
-        public void TraverseUp(int startRow, int startColumn, Worksheet _ws)
+        public void TraverseUp(int startRow, int startColumn, ExcelWorksheet _ws)
         {
             UpQueue.Enqueue((startRow, startColumn));
 
@@ -2805,14 +2725,14 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  UP NAVIGATION
         // =======================================================
-        private void ProcessUp(int row, int column, Worksheet _ws)
+        private void ProcessUp(int row, int column, ExcelWorksheet _ws)
         {
             int r = row;
 
             while (r > 1)
             {
-                Excel.Range leftCell = _ws.Cells[r, column - 1];
-                Excel.Range rightCell = _ws.Cells[r, column];
+                ExcelRange leftCell = _ws.Cells[r, column - 1];
+                ExcelRange rightCell = _ws.Cells[r, column];
 
                 bool leftHasTop = HasTop(leftCell);
                 bool rightHasTop = HasTop(rightCell);
@@ -2832,7 +2752,7 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 if (leftHasTop && rightHasTop)
                 {
-                    Excel.Range parent;
+                    ExcelRange parent;
                     if (TryGetImmediateMergeParent(leftCell, _ws, out parent))
                     {
                         ParentMergedCells.Add(parent);
@@ -2841,12 +2761,13 @@ namespace LChart_Comparison_Tool
                 }
                 if (leftHasTop)
                 {
-                    var turnLeft = leftCell.Offset[-1, 0];
+                    var turnLeft = (ExcelRange)leftCell.Offset(-1, 0);
                     ProcessLeftPath(turnLeft);
                 }
+
                 if (rightHasTop)
                 {
-                    var turnRight = rightCell.Offset[-1, 0];
+                    var turnRight = (ExcelRange)rightCell.Offset(-1, 0);
                     ProcessRightPath(turnRight);
                 }
 
@@ -2857,10 +2778,10 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  LEFT PATH
         // =======================================================
-        private void ProcessLeftPath(Excel.Range startCell)
+        private void ProcessLeftPath(ExcelRange startCell)
         {
-            //Excel.Range current = startCell.Offset[-1, 0];
-            Excel.Range current = startCell;//.Offset[-1, 0];
+            //ExcelRange current = startCell.Offset[-1, 0];
+            ExcelRange current = startCell;//.Offset[-1, 0];
 
             while (true)
             {
@@ -2873,19 +2794,19 @@ namespace LChart_Comparison_Tool
                 if (left && bottom)
                 {
                     // Enqueue NEW UP traversal point
-                    UpQueue.Enqueue((current.Row, current.Column));
+                    UpQueue.Enqueue((current.Start.Row, current.Start.Column));
                 }
 
-                current = current.Offset[0, -1]; // MOVE LEFT
+                current = (ExcelRange)current.Offset(0, -1); // MOVE LEFT
             }
         }
 
         // =======================================================
         //  RIGHT PATH
         // =======================================================
-        private void ProcessRightPath(Excel.Range startCell)
+        private void ProcessRightPath(ExcelRange startCell)
         {
-            Excel.Range current = startCell;
+            ExcelRange current = startCell;
 
             while (true)
             {
@@ -2898,11 +2819,11 @@ namespace LChart_Comparison_Tool
                 if (right && bottom)
                 {
                     // Enqueue NEW UP traversal point
-                    int move1ColumnRight = current.Column + 1;
-                    UpQueue.Enqueue((current.Row, move1ColumnRight));
+                    int move1ColumnRight = current.Start.Column + 1;
+                    UpQueue.Enqueue((current.Start.Row, move1ColumnRight));
                 }
 
-                current = current.Offset[0, 1]; // MOVE RIGHT
+                current = (ExcelRange)current.Offset(0, 10); // MOVE RIGHT
             }
         }
 
@@ -2927,56 +2848,71 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  BORDER HELPERS
         // =======================================================
-        private bool HasTop(Excel.Range c) =>
-            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeTop].LineStyle
-            != Excel.XlLineStyle.xlLineStyleNone;
+        private bool HasTop(ExcelRange c) =>
+    c.Style.Border.Top.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
 
-        private bool HasBottom(Excel.Range c) =>
-            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeBottom].LineStyle
-            != Excel.XlLineStyle.xlLineStyleNone;
+        private bool HasBottom(ExcelRange c) =>
+    c.Style.Border.Bottom.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
 
-        private bool HasLeft(Excel.Range c) =>
-            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeLeft].LineStyle
-            != Excel.XlLineStyle.xlLineStyleNone;
+        private bool HasLeft(ExcelRange c) =>
+    c.Style.Border.Left.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
 
-        private bool HasRight(Excel.Range c) =>
-            (Excel.XlLineStyle)c.Borders[Excel.XlBordersIndex.xlEdgeRight].LineStyle
-            != Excel.XlLineStyle.xlLineStyleNone;
+        private bool HasRight(ExcelRange c) =>
+    c.Style.Border.Right.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
 
-        private bool TryGetImmediateMergeParent(Excel.Range belowCell, Worksheet ws, out Excel.Range parentCell)
+        private bool TryGetImmediateMergeParent(ExcelRange belowCell, ExcelWorksheet ws, out ExcelRange parentCell)
         {
             parentCell = null;
 
-            // Excel: to reach the TRUE merged cell above, you need Offset[-2, 0]
-            Excel.Range above = belowCell.Offset[-2, 0];
+            // Move 2 rows up from belowCell
+            int targetRow = belowCell.Start.Row - 2;
+            int targetCol = belowCell.Start.Column;
+            ExcelRange above = ws.Cells[targetRow, targetCol];
 
-            // Not a merged cell → no parent
-            if (!above.MergeCells)
+            // Not merged → no parent
+            if (!above.Merge)
                 return false;
 
-            Excel.Range merged = above.MergeArea;
+            // Find the merged range that contains 'above'
+            string mergedAddress = ws.MergedCells
+                .FirstOrDefault(a =>
+                {
+                    var addr = new ExcelAddress(a);
+                    return above.Start.Row >= addr.Start.Row && above.Start.Row <= addr.End.Row
+                        && above.Start.Column >= addr.Start.Column && above.Start.Column <= addr.End.Column;
+                });
 
-            // Top-left cell of merged block
-            Excel.Range topLeft = merged.Cells[1, 1];
+            if (mergedAddress == null)
+                return false;
 
-            // Compute parent column (right edge + 1)
-            int parentCol = topLeft.Column + merged.Columns.Count;
+            // Full merged range
+            ExcelRange merged = ws.Cells[mergedAddress];
 
-            parentCell = ws.Cells[topLeft.Row, parentCol];
+            // Top-left of merged block
+            int topLeftRow = merged.Start.Row;
+            int topLeftCol = merged.Start.Column;
+
+            // Compute parent column = right edge + 1
+            int parentCol = topLeftCol + merged.Columns;
+
+            // Get parent cell
+            parentCell = ws.Cells[topLeftRow, parentCol];
+
             return true;
         }
+
 
         // =======================================================
         //  UP NAVIGATION
         // =======================================================
-        private void ProcessDown(int row, int column, Worksheet _ws)
+        private void ProcessDown(int row, int column, ExcelWorksheet _ws)
         {
             int r = row;
 
             while (r <= 100000)
             {
-                Excel.Range leftCell = _ws.Cells[r, column - 1];
-                Excel.Range rightCell = _ws.Cells[r, column];
+                ExcelRange leftCell = _ws.Cells[r, column - 1];
+                ExcelRange rightCell = _ws.Cells[r, column];
 
                 bool leftHasBottom = HasBottom(leftCell);
                 bool rightHasBottom = HasBottom(rightCell);
@@ -2996,7 +2932,7 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 if (leftHasBottom && rightHasBottom)
                 {
-                    Excel.Range parent;
+                    ExcelRange parent;
                     if (TryGetImmediateMergeParentDown(leftCell, _ws, out parent))
                     {
                         ParentMergedCells.Add(parent);
@@ -3005,12 +2941,13 @@ namespace LChart_Comparison_Tool
                 }
                 if (leftHasBottom)
                 {
-                    var turnLeft = leftCell.Offset[+1, 0];
+                    var turnLeft = (ExcelRange)leftCell.Offset(1, 0); // Move 1 row down
                     ProcessDownLeftPath(turnLeft);
                 }
+
                 if (rightHasBottom)
                 {
-                    var turnRight = rightCell.Offset[+1, 0];
+                    var turnRight = (ExcelRange)rightCell.Offset(1, 0); // Move 1 row down
                     ProcessDownRightPath(turnRight);
                 }
 
@@ -3021,10 +2958,10 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  LEFT PATH
         // =======================================================
-        private void ProcessDownLeftPath(Excel.Range startCell)
+        private void ProcessDownLeftPath(ExcelRange startCell)
         {
-            //Excel.Range current = startCell.Offset[-1, 0];
-            Excel.Range current = startCell;//.Offset[-1, 0];
+            //ExcelRange current = startCell.Offset[-1, 0];
+            ExcelRange current = startCell;//.Offset[-1, 0];
 
             while (true)
             {
@@ -3037,19 +2974,21 @@ namespace LChart_Comparison_Tool
                 if (left && top)
                 {
                     // Enqueue NEW UP traversal point
-                    DownQueue.Enqueue((current.Row, current.Column));
+                    int row = current.Start.Row;
+                    int column = current.Start.Column;
+                    DownQueue.Enqueue((row, column));
                 }
 
-                current = current.Offset[0, -1]; // MOVE LEFT
+                current = (ExcelRange)current.Offset(0, -1); // MOVE LEFT
             }
         }
 
         // =======================================================
         //  RIGHT PATH
         // =======================================================
-        private void ProcessDownRightPath(Excel.Range startCell)
+        private void ProcessDownRightPath(ExcelRange startCell)
         {
-            Excel.Range current = startCell;
+            ExcelRange current = startCell;
 
             while (true)
             {
@@ -3062,36 +3001,55 @@ namespace LChart_Comparison_Tool
                 if (right && top)
                 {
                     // Enqueue NEW UP traversal point
-                    int move1ColumnRight = current.Column + 1;
-                    DownQueue.Enqueue((current.Row, move1ColumnRight));
+                    int move1ColumnRight = current.Start.Column + 1;
+                    DownQueue.Enqueue((current.Start.Row, move1ColumnRight));
                 }
 
-                current = current.Offset[0, 1]; // MOVE RIGHT
+                current = (ExcelRange)current.Offset(0, 1); // Move 1 column right
             }
         }
 
-        private bool TryGetImmediateMergeParentDown(Excel.Range belowCell, Worksheet ws, out Excel.Range parentCell)
+        private bool TryGetImmediateMergeParentDown(ExcelRange belowCell, ExcelWorksheet ws, out ExcelRange parentCell)
         {
             parentCell = null;
 
-            // Excel: to reach the TRUE merged cell above, you need Offset[-2, 0]
-            Excel.Range above = belowCell.Offset[+2, 0];
+            // Move 2 rows down from belowCell (Interop Offset[-2,0])
+            int targetRow = belowCell.Start.Row + 2;
+            int targetCol = belowCell.Start.Column;
+            ExcelRange above = ws.Cells[targetRow, targetCol];
 
-            // Not a merged cell → no parent
-            if (!above.MergeCells)
+            // Not merged → no parent
+            if (!above.Merge)
                 return false;
 
-            Excel.Range merged = above.MergeArea;
+            // Find the merged range that contains 'above'
+            string mergedAddress = ws.MergedCells
+                .FirstOrDefault(a =>
+                {
+                    var addr = new ExcelAddress(a);
+                    return above.Start.Row >= addr.Start.Row && above.Start.Row <= addr.End.Row
+                        && above.Start.Column >= addr.Start.Column && above.Start.Column <= addr.End.Column;
+                });
 
-            // Top-left cell of merged block
-            Excel.Range topLeft = merged.Cells[1, 1];
+            if (mergedAddress == null)
+                return false;
 
-            // Compute parent column (right edge + 1)
-            int parentCol = topLeft.Column + merged.Columns.Count;
+            // Full merged range
+            ExcelRange merged = ws.Cells[mergedAddress];
 
-            parentCell = ws.Cells[topLeft.Row, parentCol];
+            // Top-left of merged block
+            int topLeftRow = merged.Start.Row;
+            int topLeftCol = merged.Start.Column;
+
+            // Compute parent column = right edge + 1
+            int parentCol = topLeftCol + merged.Columns;
+
+            // Get parent cell
+            parentCell = ws.Cells[topLeftRow, parentCol];
+
             return true;
         }
+
 
         private void btnBrowse_Click(object sender, EventArgs e)
         {
@@ -3203,15 +3161,15 @@ namespace LChart_Comparison_Tool
                 for (int col = 1; col <= lastCol; col++)
                 {
                     //if (col == 8) continue; // skip ParentOperationNumber column
-                    ws.Cells[newRow, col].Value = ws.Cells[row, col].Value;
+                    //ws.Cells[newRow, col].Value = ws.Cells[row, col].Value;
                 }
             }
 
             // Write ParentOperationNumber for all parents
-            for (int i = 0; i < parents.Count; i++)
+            //for (int i = 0; i < parents.Count; i++)
             {
-                int targetRow = row + i;
-                ws.Cells[targetRow, 8].Value = parents[i].ParentOperationNumber;
+                //int targetRow = row + i;
+                //ws.Cells[targetRow, 8].Value = parents[i].ParentOperationNumber;
             }
 
             // Update lastRow because we inserted rows
