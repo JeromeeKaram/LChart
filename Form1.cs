@@ -2,6 +2,7 @@
 using Microsoft.Office.Interop.PowerPoint;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using OfficeOpenXml;
+using OfficeOpenXml.Style;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,12 +18,12 @@ namespace LChart_Comparison_Tool
 {
     public partial class Form1 : Form
     {
-        List<ExcelRange> navigateLeft = new List<ExcelRange>();
-        List<ExcelRange> navigateRight = new List<ExcelRange>();
-        List<ExcelRange> navigateUp = new List<ExcelRange>();
-        List<ExcelRange> navigateDown = new List<ExcelRange>();
+        List<ExcelRangeBase> navigateLeft = new List<ExcelRangeBase>();
+        List<ExcelRangeBase> navigateRight = new List<ExcelRangeBase>();
+        List<ExcelRangeBase> navigateUp = new List<ExcelRangeBase>();
+        List<ExcelRangeBase> navigateDown = new List<ExcelRangeBase>();
 
-        public List<ExcelRange> ParentMergedCells = new();
+        public List<ExcelRangeBase> ParentMergedCells = new();
 
         // Internal queues → BFS recursion
         private Queue<(int row, int col)> UpQueue = new();
@@ -2494,7 +2495,7 @@ namespace LChart_Comparison_Tool
                                 continue;
                             }
 
-                            string direction = "OFF";// group.Direction;
+                            string direction = group.Direction;
                             worksheetLChart = workbookModule.Worksheets[1];
                             usedRangeLChart = worksheetLChart.Cells[
     worksheetLChart.Dimension.Start.Row,
@@ -2528,7 +2529,7 @@ namespace LChart_Comparison_Tool
 
                                     cellText = Convert.ToString(cellText);
 
-                                    if (string.Equals(cellText, "284", StringComparison.OrdinalIgnoreCase))
+                                    if (string.Equals(cellText, block.BlockNumber, StringComparison.OrdinalIgnoreCase))
                                     {
                                         Console.WriteLine($"✅ Found \"{block.BlockNumber}\" at Row: {rrow}, Column: {col}");
                                         found = true;
@@ -2560,7 +2561,7 @@ namespace LChart_Comparison_Tool
                                     downLineStartsAtRow = foundAtRow + 4;
                                     downLineStartsAtColumn = foundAtColumn - 2;
                                     TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheetLChart);
-                                    List<ExcelRange> parents = ParentMergedCells;
+                                    List<ExcelRangeBase> parents = ParentMergedCells;
                                     BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
                                     foreach (var p in parents)
                                     {
@@ -2571,7 +2572,6 @@ namespace LChart_Comparison_Tool
                                             ParentNumber = p.Text,
                                             ParentOperationNumber = operationNumber
                                         });
-                                        Marshal.ReleaseComObject(p);
                                     }
                                     parents.Clear();
                                 }
@@ -2582,7 +2582,7 @@ namespace LChart_Comparison_Tool
                                     upLineStartsAtRow = foundAtRow - 1;
                                     upLineStartsAtColumn = foundAtColumn - 2;
                                     TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheetLChart);
-                                    List<ExcelRange> parents = ParentMergedCells;
+                                    List<ExcelRangeBase> parents = ParentMergedCells;
                                     BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
                                     foreach (var p in parents)
                                     {
@@ -2593,7 +2593,6 @@ namespace LChart_Comparison_Tool
                                             ParentNumber = p.Text,
                                             ParentOperationNumber = operationNumber
                                         });
-                                        Marshal.ReleaseComObject(p);
                                     }
                                     parents.Clear();
                                 }
@@ -2626,9 +2625,9 @@ namespace LChart_Comparison_Tool
                 using (var package = new ExcelPackage(new FileInfo(copiedFile)))
                 {
                     // Get the first worksheet
-                    var worksheetCopiedFile = package.Workbook.Worksheets[1];
-                    int lastRow = worksheetCopiedFile.Dimension.End.Row;
-                    int lastCol = worksheetCopiedFile.Dimension.End.Column;
+                    var worksheetOfCopiedFile = package.Workbook.Worksheets[1];
+                    int lastRow = worksheetOfCopiedFile.Dimension.End.Row;
+                    int lastCol = worksheetOfCopiedFile.Dimension.End.Column;
 
                     foreach (var group in groupedList)
                     {
@@ -2637,16 +2636,16 @@ namespace LChart_Comparison_Tool
 
                         foreach (var block in group.Blocks)
                         {
-                            UpdateExcelForBlock(worksheetCopiedFile, block, moduleName, direction, ref lastRow, lastCol);
+                            UpdateExcelForBlock(worksheetOfCopiedFile, block, moduleName, direction, ref lastRow, lastCol);
                         }
                     }
+                    package.Save();
                 }
                 // end
             }
             finally
             {
             }
-            //}
             var endTime = DateTime.Now;
             Console.WriteLine($"Start Time : {startTime}");
             Console.WriteLine($"End Time   : {endTime}");
@@ -2731,8 +2730,8 @@ namespace LChart_Comparison_Tool
 
             while (r > 1)
             {
-                ExcelRange leftCell = _ws.Cells[r, column - 1];
-                ExcelRange rightCell = _ws.Cells[r, column];
+                ExcelRangeBase leftCell = _ws.Cells[r, column - 1];
+                ExcelRangeBase rightCell = _ws.Cells[r, column];
 
                 bool leftHasTop = HasTop(leftCell);
                 bool rightHasTop = HasTop(rightCell);
@@ -2752,7 +2751,7 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 if (leftHasTop && rightHasTop)
                 {
-                    ExcelRange parent;
+                    ExcelRangeBase parent;
                     if (TryGetImmediateMergeParent(leftCell, _ws, out parent))
                     {
                         ParentMergedCells.Add(parent);
@@ -2761,13 +2760,13 @@ namespace LChart_Comparison_Tool
                 }
                 if (leftHasTop)
                 {
-                    var turnLeft = (ExcelRange)leftCell.Offset(-1, 0);
+                    var turnLeft = (ExcelRangeBase)leftCell.Offset(-1, 0);
                     ProcessLeftPath(turnLeft);
                 }
 
                 if (rightHasTop)
                 {
-                    var turnRight = (ExcelRange)rightCell.Offset(-1, 0);
+                    var turnRight = (ExcelRangeBase)rightCell.Offset(-1, 0);
                     ProcessRightPath(turnRight);
                 }
 
@@ -2778,10 +2777,10 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  LEFT PATH
         // =======================================================
-        private void ProcessLeftPath(ExcelRange startCell)
+        private void ProcessLeftPath(ExcelRangeBase startCell)
         {
             //ExcelRange current = startCell.Offset[-1, 0];
-            ExcelRange current = startCell;//.Offset[-1, 0];
+            var current = startCell;//.Offset[-1, 0];
 
             while (true)
             {
@@ -2804,9 +2803,9 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  RIGHT PATH
         // =======================================================
-        private void ProcessRightPath(ExcelRange startCell)
+        private void ProcessRightPath(ExcelRangeBase startCell)
         {
-            ExcelRange current = startCell;
+            var current = startCell;
 
             while (true)
             {
@@ -2823,7 +2822,7 @@ namespace LChart_Comparison_Tool
                     UpQueue.Enqueue((current.Start.Row, move1ColumnRight));
                 }
 
-                current = (ExcelRange)current.Offset(0, 10); // MOVE RIGHT
+                current = (ExcelRangeBase)current.Offset(0, 10); // MOVE RIGHT
             }
         }
 
@@ -2848,19 +2847,47 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  BORDER HELPERS
         // =======================================================
-        private bool HasTop(ExcelRange c) =>
-    c.Style.Border.Top.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
+        private ExcelRangeBase GetActualCell(ExcelRangeBase cell)
+        {
+            if (cell.Merge)
+            {
+                string merged = cell.Worksheet.MergedCells[cell.Start.Row, cell.Start.Column];
+                var addr = new ExcelAddress(merged);
 
-        private bool HasBottom(ExcelRange c) =>
-    c.Style.Border.Bottom.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
+                // Returns ExcelRangeBase (safe)
+                return cell.Worksheet.Cells[addr.Start.Row, addr.Start.Column];
+            }
 
-        private bool HasLeft(ExcelRange c) =>
-    c.Style.Border.Left.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
+            return cell;
+        }
 
-        private bool HasRight(ExcelRange c) =>
-    c.Style.Border.Right.Style != OfficeOpenXml.Style.ExcelBorderStyle.None;
+        private bool HasTop(ExcelRangeBase c)
+        {
+            var cell = GetActualCell(c);
+            return cell.Style.Border.Top.Style != ExcelBorderStyle.None;
+        }
 
-        private bool TryGetImmediateMergeParent(ExcelRange belowCell, ExcelWorksheet ws, out ExcelRange parentCell)
+        private bool HasBottom(ExcelRangeBase c)
+        {
+            var cell = GetActualCell(c);
+            return cell.Style.Border.Bottom.Style != ExcelBorderStyle.None;
+        }
+
+        private bool HasLeft(ExcelRangeBase c)
+        {
+            var cell = GetActualCell(c);
+            return cell.Style.Border.Left.Style != ExcelBorderStyle.None;
+        }
+
+        private bool HasRight(ExcelRangeBase c)
+        {
+            var cell = GetActualCell(c);
+            return cell.Style.Border.Right.Style != ExcelBorderStyle.None;
+        }
+
+
+
+        private bool TryGetImmediateMergeParent(ExcelRangeBase belowCell, ExcelWorksheet ws, out ExcelRangeBase parentCell)
         {
             parentCell = null;
 
@@ -3124,9 +3151,7 @@ namespace LChart_Comparison_Tool
                 string excelModule = ws.Cells[r, 3].Text.Trim();
                 string excelDirection = ws.Cells[r, 4].Text.Trim();
 
-                if (excelBlock == blockNumber &&
-                    excelModule == moduleName &&
-                    excelDirection == direction)
+                if (excelBlock == blockNumber && $"{excelModule} {direction}".Trim().Equals(moduleName, StringComparison.OrdinalIgnoreCase))
                 {
                     row = r;
                     break;
@@ -3160,16 +3185,16 @@ namespace LChart_Comparison_Tool
                 int newRow = row + i;
                 for (int col = 1; col <= lastCol; col++)
                 {
-                    //if (col == 8) continue; // skip ParentOperationNumber column
-                    //ws.Cells[newRow, col].Value = ws.Cells[row, col].Value;
+                    if (col == 8) continue; // skip ParentOperationNumber column
+                    ws.Cells[newRow, col].Value = ws.Cells[row, col].Value;
                 }
             }
 
             // Write ParentOperationNumber for all parents
-            //for (int i = 0; i < parents.Count; i++)
+            for (int i = 0; i < parents.Count; i++)
             {
-                //int targetRow = row + i;
-                //ws.Cells[targetRow, 8].Value = parents[i].ParentOperationNumber;
+                int targetRow = row + i;
+                ws.Cells[targetRow, 8].Value = parents[i].ParentOperationNumber;
             }
 
             // Update lastRow because we inserted rows
