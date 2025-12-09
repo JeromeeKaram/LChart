@@ -2654,7 +2654,7 @@ namespace LChart_Comparison_Tool
 
         private bool FilesAreSearchCompatible(string module)
         {
-            if (module == "CIC ON" || module == "FINAL ON" || module == "GBX ON")
+            if (module == "CIC ON" || module == "FINAL ON" || module == "GBX ON" || module == "LPT_TEC OFF")
             {
                 return false;
             }
