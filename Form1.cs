@@ -2466,8 +2466,6 @@ namespace LChart_Comparison_Tool
                 {
                     if (!FilesAreSearchCompatible(group.ModuleName)) continue;
 
-                    //if (group.ModuleName != "TEC ON") continue;
-
                     ExcelWorkbook workbookModule = null;
                     ExcelWorksheet worksheetLChart = null;
                     ExcelWorksheet workSheetManual = null;
@@ -2705,7 +2703,7 @@ namespace LChart_Comparison_Tool
             while (DownQueue.Count > 0)
             {
                 var node = DownQueue.Dequeue();
-                int totalRows = _ws.Dimension.Rows;
+                int totalRows = _ws.Dimension.End.Row;
                 ProcessDown(node.row, node.col, _ws, totalRows);
             }
         }
@@ -2867,7 +2865,37 @@ namespace LChart_Comparison_Tool
         private bool HasTop(ExcelRangeBase c)
         {
             var cell = GetActualCell(c);
-            return cell.Style.Border.Top.Style != ExcelBorderStyle.None;
+            var ws = cell.Worksheet;
+
+            int row = cell.Start.Row;
+            int col = cell.Start.Column;
+
+            // 1. Direct top border on current cell
+            if (cell.Style.Border.Top.Style != ExcelBorderStyle.None)
+                return true;
+
+            // 2. Look at the cell above
+            if (ws.Dimension != null && row > 1)
+            {
+                int aboveRow = row - 1;
+                var above = ws.Cells[aboveRow, col];
+
+                // Check merged region above
+                var mergedAddress = ws.MergedCells[aboveRow, col];
+                if (!string.IsNullOrEmpty(mergedAddress))
+                {
+                    var addr = new ExcelAddress(mergedAddress);
+
+                    // Use merged region's FIRST ROW but SAME COLUMN
+                    above = ws.Cells[addr.Start.Row, col];
+                }
+
+                // The bottom border of the cell above forms our visible top border
+                if (above.Style.Border.Bottom.Style != ExcelBorderStyle.None)
+                    return true;
+            }
+
+            return false;
         }
 
         private bool HasBottom(ExcelRangeBase c)
@@ -2878,30 +2906,34 @@ namespace LChart_Comparison_Tool
             int row = cell.Start.Row;
             int col = cell.Start.Column;
 
-            // 1. Check direct bottom border on this cell
+            // 1. Direct bottom border on this cell
             if (cell.Style.Border.Bottom.Style != ExcelBorderStyle.None)
                 return true;
 
             // 2. Look at the cell below
-            if (ws.Dimension != null && row < ws.Dimension.Rows)
+            if (ws.Dimension != null && row < ws.Dimension.End.Row)
             {
-                var below = ws.Cells[row + 1, col];
+                int nextRow = row + 1;
+                var below = ws.Cells[nextRow, col];
 
-                // If the cell below is merged, pick the merged region's top-left cell
-                var mergedAddress = ws.MergedCells[row + 1, col];
+                // Check merged region below
+                var mergedAddress = ws.MergedCells[nextRow, col];
                 if (!string.IsNullOrEmpty(mergedAddress))
                 {
-                    var topLeftAddress = mergedAddress.Split(':')[0];
-                    below = ws.Cells[topLeftAddress];
+                    var addr = new ExcelAddress(mergedAddress);
+
+                    // Use merged region's first row but same column
+                    below = ws.Cells[addr.Start.Row, col];
                 }
 
-                // Check if the top border of the region below forms the visible bottom border of current cell
+                // Now check the visible top border
                 if (below.Style.Border.Top.Style != ExcelBorderStyle.None)
                     return true;
             }
 
             return false;
         }
+
 
         private bool HasLeft(ExcelRangeBase c)
         {
@@ -3181,7 +3213,7 @@ namespace LChart_Comparison_Tool
                 string excelModule = ws.Cells[r, 3].Text.Trim();
                 string excelDirection = ws.Cells[r, 4].Text.Trim();
 
-                if (excelBlock == blockNumber && $"{excelModule} {direction}".Trim().Equals(moduleName, StringComparison.OrdinalIgnoreCase))
+                if (excelBlock == blockNumber && $"{excelModule} {excelDirection}".Trim().Equals(moduleName, StringComparison.OrdinalIgnoreCase))
                 {
                     row = r;
                     break;
