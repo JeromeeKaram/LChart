@@ -2466,10 +2466,12 @@ namespace LChart_Comparison_Tool
                 {
                     if (!FilesAreSearchCompatible(group.ModuleName)) continue;
 
+                    //if (group.ModuleName != "TEC ON") continue;
+
                     ExcelWorkbook workbookModule = null;
                     ExcelWorksheet worksheetLChart = null;
                     ExcelWorksheet workSheetManual = null;
-                    ExcelRange usedRangeLChart = null;
+                    ExcelRangeBase usedRangeLChart = null;
 
                     Console.WriteLine($"\nProcessing Group: {group.ModuleName}");
 
@@ -2509,7 +2511,7 @@ namespace LChart_Comparison_Tool
                             int bottomCell = 0;
 
                             List<string> move = new List<string>();
-                            List<ExcelRange> mergedRanges = new List<ExcelRange>();
+                            List<ExcelRangeBase> mergedRanges = new List<ExcelRangeBase>();
 
                             int LChartLastRow = worksheetLChart.Dimension?.End.Row ?? 1;
                             int LChartLastColumn = worksheetLChart.Dimension?.End.Column ?? 1;
@@ -2703,7 +2705,8 @@ namespace LChart_Comparison_Tool
             while (DownQueue.Count > 0)
             {
                 var node = DownQueue.Dequeue();
-                ProcessDown(node.row, node.col, _ws);
+                int totalRows = _ws.Dimension.Rows;
+                ProcessDown(node.row, node.col, _ws, totalRows);
             }
         }
 
@@ -2796,7 +2799,7 @@ namespace LChart_Comparison_Tool
                     UpQueue.Enqueue((current.Start.Row, current.Start.Column));
                 }
 
-                current = (ExcelRange)current.Offset(0, -1); // MOVE LEFT
+                current = (ExcelRangeBase)current.Offset(0, -1); // MOVE LEFT
             }
         }
 
@@ -2870,7 +2873,34 @@ namespace LChart_Comparison_Tool
         private bool HasBottom(ExcelRangeBase c)
         {
             var cell = GetActualCell(c);
-            return cell.Style.Border.Bottom.Style != ExcelBorderStyle.None;
+            var ws = cell.Worksheet;
+
+            int row = cell.Start.Row;
+            int col = cell.Start.Column;
+
+            // 1. Check direct bottom border on this cell
+            if (cell.Style.Border.Bottom.Style != ExcelBorderStyle.None)
+                return true;
+
+            // 2. Look at the cell below
+            if (ws.Dimension != null && row < ws.Dimension.Rows)
+            {
+                var below = ws.Cells[row + 1, col];
+
+                // If the cell below is merged, pick the merged region's top-left cell
+                var mergedAddress = ws.MergedCells[row + 1, col];
+                if (!string.IsNullOrEmpty(mergedAddress))
+                {
+                    var topLeftAddress = mergedAddress.Split(':')[0];
+                    below = ws.Cells[topLeftAddress];
+                }
+
+                // Check if the top border of the region below forms the visible bottom border of current cell
+                if (below.Style.Border.Top.Style != ExcelBorderStyle.None)
+                    return true;
+            }
+
+            return false;
         }
 
         private bool HasLeft(ExcelRangeBase c)
@@ -2894,7 +2924,7 @@ namespace LChart_Comparison_Tool
             // Move 2 rows up from belowCell
             int targetRow = belowCell.Start.Row - 2;
             int targetCol = belowCell.Start.Column;
-            ExcelRange above = ws.Cells[targetRow, targetCol];
+            ExcelRangeBase above = ws.Cells[targetRow, targetCol];
 
             // Not merged → no parent
             if (!above.Merge)
@@ -2913,7 +2943,7 @@ namespace LChart_Comparison_Tool
                 return false;
 
             // Full merged range
-            ExcelRange merged = ws.Cells[mergedAddress];
+            ExcelRangeBase merged = ws.Cells[mergedAddress];
 
             // Top-left of merged block
             int topLeftRow = merged.Start.Row;
@@ -2932,14 +2962,14 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  UP NAVIGATION
         // =======================================================
-        private void ProcessDown(int row, int column, ExcelWorksheet _ws)
+        private void ProcessDown(int row, int column, ExcelWorksheet _ws, int worksheetRowsCount)
         {
             int r = row;
 
-            while (r <= 100000)
+            while (r <= worksheetRowsCount)
             {
-                ExcelRange leftCell = _ws.Cells[r, column - 1];
-                ExcelRange rightCell = _ws.Cells[r, column];
+                ExcelRangeBase leftCell = _ws.Cells[r, column - 1];
+                ExcelRangeBase rightCell = _ws.Cells[r, column];
 
                 bool leftHasBottom = HasBottom(leftCell);
                 bool rightHasBottom = HasBottom(rightCell);
@@ -2959,7 +2989,7 @@ namespace LChart_Comparison_Tool
                 // -----------------------------------------
                 if (leftHasBottom && rightHasBottom)
                 {
-                    ExcelRange parent;
+                    ExcelRangeBase parent;
                     if (TryGetImmediateMergeParentDown(leftCell, _ws, out parent))
                     {
                         ParentMergedCells.Add(parent);
@@ -2968,13 +2998,13 @@ namespace LChart_Comparison_Tool
                 }
                 if (leftHasBottom)
                 {
-                    var turnLeft = (ExcelRange)leftCell.Offset(1, 0); // Move 1 row down
+                    var turnLeft = (ExcelRangeBase)leftCell.Offset(1, 0); // Move 1 row down
                     ProcessDownLeftPath(turnLeft);
                 }
 
                 if (rightHasBottom)
                 {
-                    var turnRight = (ExcelRange)rightCell.Offset(1, 0); // Move 1 row down
+                    var turnRight = (ExcelRangeBase)rightCell.Offset(1, 0); // Move 1 row down
                     ProcessDownRightPath(turnRight);
                 }
 
@@ -2985,10 +3015,10 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  LEFT PATH
         // =======================================================
-        private void ProcessDownLeftPath(ExcelRange startCell)
+        private void ProcessDownLeftPath(ExcelRangeBase startCell)
         {
             //ExcelRange current = startCell.Offset[-1, 0];
-            ExcelRange current = startCell;//.Offset[-1, 0];
+            ExcelRangeBase current = startCell;//.Offset[-1, 0];
 
             while (true)
             {
@@ -3006,16 +3036,16 @@ namespace LChart_Comparison_Tool
                     DownQueue.Enqueue((row, column));
                 }
 
-                current = (ExcelRange)current.Offset(0, -1); // MOVE LEFT
+                current = (ExcelRangeBase)current.Offset(0, -1); // MOVE LEFT
             }
         }
 
         // =======================================================
         //  RIGHT PATH
         // =======================================================
-        private void ProcessDownRightPath(ExcelRange startCell)
+        private void ProcessDownRightPath(ExcelRangeBase startCell)
         {
-            ExcelRange current = startCell;
+            ExcelRangeBase current = startCell;
 
             while (true)
             {
@@ -3032,18 +3062,18 @@ namespace LChart_Comparison_Tool
                     DownQueue.Enqueue((current.Start.Row, move1ColumnRight));
                 }
 
-                current = (ExcelRange)current.Offset(0, 1); // Move 1 column right
+                current = (ExcelRangeBase)current.Offset(0, 1); // Move 1 column right
             }
         }
 
-        private bool TryGetImmediateMergeParentDown(ExcelRange belowCell, ExcelWorksheet ws, out ExcelRange parentCell)
+        private bool TryGetImmediateMergeParentDown(ExcelRangeBase belowCell, ExcelWorksheet ws, out ExcelRangeBase parentCell)
         {
             parentCell = null;
 
             // Move 2 rows down from belowCell (Interop Offset[-2,0])
             int targetRow = belowCell.Start.Row + 2;
             int targetCol = belowCell.Start.Column;
-            ExcelRange above = ws.Cells[targetRow, targetCol];
+            ExcelRangeBase above = ws.Cells[targetRow, targetCol];
 
             // Not merged → no parent
             if (!above.Merge)
@@ -3062,7 +3092,7 @@ namespace LChart_Comparison_Tool
                 return false;
 
             // Full merged range
-            ExcelRange merged = ws.Cells[mergedAddress];
+            ExcelRangeBase merged = ws.Cells[mergedAddress];
 
             // Top-left of merged block
             int topLeftRow = merged.Start.Row;
