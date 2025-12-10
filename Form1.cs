@@ -1,6 +1,7 @@
 ﻿using Microsoft.Office.Core;
 using Microsoft.Office.Interop.PowerPoint;
 using Microsoft.WindowsAPICodePack.Dialogs;
+using MS.WindowsAPICodePack.Internal;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System;
@@ -22,6 +23,9 @@ namespace LChart_Comparison_Tool
         List<ExcelRangeBase> navigateRight = new List<ExcelRangeBase>();
         List<ExcelRangeBase> navigateUp = new List<ExcelRangeBase>();
         List<ExcelRangeBase> navigateDown = new List<ExcelRangeBase>();
+        const string SheetLChartNovel = "L-Chart(NOVEL)";
+        const string SheetLChart = "L-Chart";
+        const string SheetManual = "Manual Sheet";
 
         public List<ExcelRangeBase> ParentMergedCells = new();
 
@@ -31,7 +35,6 @@ namespace LChart_Comparison_Tool
 
 
         int newRowToWriteAt = 7;
-        //private string newFilePath = "D:\\newfile.xlsx";
         private string outputFolder = "";
 
         public Form1()
@@ -2467,11 +2470,10 @@ namespace LChart_Comparison_Tool
                     if (!FilesAreSearchCompatible(group.ModuleName)) continue;
 
                     ExcelWorkbook workbookModule = null;
-                    ExcelWorksheet worksheetLChart = null;
+                    ExcelWorksheet workSheetLChart = null;
                     ExcelWorksheet workSheetManual = null;
-                    ExcelRangeBase usedRangeLChart = null;
-
-                    Console.WriteLine($"\nProcessing Group: {group.ModuleName}");
+                    ExcelWorksheet workSheetNovel = null;
+                    ExcelWorksheet workSheetToTraverse = null;
 
                     var matchedFile = files
                    .Where(f => Path.GetFileName(f).StartsWith($"{group.ModuleName}", StringComparison.OrdinalIgnoreCase))
@@ -2488,6 +2490,10 @@ namespace LChart_Comparison_Tool
                         var package = new ExcelPackage(new FileInfo(matchedFile));
                         workbookModule = package.Workbook;
 
+                        var sheetNamesList = package.Workbook.Worksheets
+                  .Select(ws => ws.Name)
+                  .ToList();
+
                         foreach (var block in group.Blocks)
                         {
                             if (string.IsNullOrEmpty(block.BlockNumber))
@@ -2495,106 +2501,98 @@ namespace LChart_Comparison_Tool
                                 continue;
                             }
 
-                            string direction = group.Direction;
-                            worksheetLChart = workbookModule.Worksheets[1];
-                            usedRangeLChart = worksheetLChart.Cells[
-    worksheetLChart.Dimension.Start.Row,
-    worksheetLChart.Dimension.Start.Column,
-    worksheetLChart.Dimension.End.Row,
-    worksheetLChart.Dimension.End.Column
-];
+                            bool isNovelBlock = block.BlockNumber.IndexOf("NOVEL", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                            int cellToTheLeft = 0;
-                            int topCell = 0;
-                            int bottomCell = 0;
+                            // Sheet references
+                            workSheetLChart = package.Workbook.Worksheets[SheetLChart];
 
-                            List<string> move = new List<string>();
-                            List<ExcelRangeBase> mergedRanges = new List<ExcelRangeBase>();
-
-                            int LChartLastRow = worksheetLChart.Dimension?.End.Row ?? 1;
-                            int LChartLastColumn = worksheetLChart.Dimension?.End.Column ?? 1;
+                            workSheetNovel = sheetNamesList.Contains(SheetLChartNovel)
+                               ? package.Workbook.Worksheets[SheetLChartNovel]
+                               : null;
 
                             bool found = false;
                             int foundAtRow = 0;
                             int foundAtColumn = 0;
 
-                            for (int rrow = 1; rrow <= LChartLastRow && !found; rrow++)
+                            // ============================================================
+                            // CASE 1: NOVEL BLOCK → Search ONLY Novel sheet
+                            // ============================================================
+                            if (isNovelBlock)
                             {
-                                for (int col = 1; col <= LChartLastColumn; col++)
+                                if (workSheetNovel == null)
+                                    continue; // skip novel blocks with no novel sheet
+
+                                if (SearchBlockInSheet(workSheetNovel, block.BlockNumber, out foundAtRow, out foundAtColumn))
                                 {
-                                    var cellText = worksheetLChart.Cells[rrow, col].Text?.Trim();
-                                    cellText = cellText.Replace("\r", "")
-                               .Replace("\n", "")
-                               .Trim();
+                                    found = true;
+                                    workSheetToTraverse = workSheetNovel;
+                                }
+                                else
+                                {
+                                    continue; // not found
+                                }
+                            }
+                            else
+                            {
+                                // ============================================================
+                                // CASE 2: NORMAL BLOCK → Search L-Chart first, then Novel
+                                // ============================================================
 
-                                    cellText = Convert.ToString(cellText);
-
-                                    if (string.Equals(cellText, block.BlockNumber, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        Console.WriteLine($"✅ Found \"{block.BlockNumber}\" at Row: {rrow}, Column: {col}");
-                                        found = true;
-                                        foundAtRow = rrow;
-                                        foundAtColumn = col;
-                                        break;
-                                    }
+                                // Try main sheet
+                                if (SearchBlockInSheet(workSheetLChart, block.BlockNumber, out foundAtRow, out foundAtColumn))
+                                {
+                                    found = true;
+                                    workSheetToTraverse = workSheetLChart;
+                                }
+                                else if (workSheetNovel != null &&
+                                         SearchBlockInSheet(workSheetNovel, block.BlockNumber, out foundAtRow, out foundAtColumn))
+                                {
+                                    found = true;
+                                    workSheetToTraverse = workSheetNovel;
+                                }
+                                else
+                                {
+                                    continue; // not found anywhere
                                 }
                             }
 
                             if (found)
                             {
-                                int downCellRow = 0;
-                                int downCellColumn = 0;
-                                int downLineStartsAtRow = 0;
-                                int downLineStartsAtColumn = 0;
+                                workSheetManual = workbookModule.Worksheets[SheetManual];
 
-                                int upCellRow = 0;
-                                int upCellColumn = 0;
-                                int upLineStartsAtRow = 0;
-                                int upLineStartsAtColumn = 0;
-
-                                workSheetManual = workbookModule.Worksheets[3];
-
-                                if (direction == "ON")
+                                if (group.Direction == "ON")
                                 {
-                                    downCellRow = foundAtRow + 1;
-                                    downCellColumn = foundAtColumn - 1;
-                                    downLineStartsAtRow = foundAtRow + 4;
-                                    downLineStartsAtColumn = foundAtColumn - 2;
-                                    TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, worksheetLChart);
-                                    List<ExcelRangeBase> parents = ParentMergedCells;
-                                    BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
-                                    foreach (var p in parents)
+                                    var downLineStartsAtRow = foundAtRow + 4;
+                                    var downLineStartsAtColumn = foundAtColumn - 2;
+                                    var parentBlocks = TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, workSheetToTraverse);
+                                    
+                                    foreach (var p in parentBlocks)
                                     {
                                         var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
                                         // ⭐ Add the ParentInfo
-                                        blockItem.Parents.Add(new ParentInfo
+                                        block.Parents.Add(new ParentInfo
                                         {
                                             ParentNumber = p.Text,
                                             ParentOperationNumber = operationNumber
                                         });
                                     }
-                                    parents.Clear();
                                 }
-                                else if (direction == "OFF")
+                                else if (group.Direction == "OFF")
                                 {
-                                    upCellRow = foundAtRow;
-                                    upCellColumn = foundAtColumn - 1;
-                                    upLineStartsAtRow = foundAtRow - 1;
-                                    upLineStartsAtColumn = foundAtColumn - 2;
-                                    TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, worksheetLChart);
-                                    List<ExcelRangeBase> parents = ParentMergedCells;
-                                    BlockItem blockItem = group.Blocks.First(b => b.BlockNumber == block.BlockNumber);
-                                    foreach (var p in parents)
+                                    var upLineStartsAtRow = foundAtRow - 1;
+                                    var upLineStartsAtColumn = foundAtColumn - 2;
+                                    var parentBlocks = TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, workSheetToTraverse);
+                                    
+                                    foreach (var p in parentBlocks)
                                     {
                                         var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
                                         // ⭐ Add the ParentInfo
-                                        blockItem.Parents.Add(new ParentInfo
+                                        block.Parents.Add(new ParentInfo
                                         {
                                             ParentNumber = p.Text,
                                             ParentOperationNumber = operationNumber
                                         });
                                     }
-                                    parents.Clear();
                                 }
                             }
                         }
@@ -2621,7 +2619,6 @@ namespace LChart_Comparison_Tool
                 // Copy the new file
                 File.Copy(sourceParentChildMaster, copiedFile);
 
-
                 using (var package = new ExcelPackage(new FileInfo(copiedFile)))
                 {
                     // Get the first worksheet
@@ -2632,11 +2629,10 @@ namespace LChart_Comparison_Tool
                     foreach (var group in groupedList)
                     {
                         var moduleName = group.ModuleName;
-                        var direction = group.Direction;
 
                         foreach (var block in group.Blocks)
                         {
-                            UpdateExcelForBlock(worksheetOfCopiedFile, block, moduleName, direction, ref lastRow, lastCol);
+                            UpdateExcelForBlock(worksheetOfCopiedFile, block, moduleName, ref lastRow, lastCol);
                         }
                     }
                     package.Save();
@@ -2696,36 +2692,40 @@ namespace LChart_Comparison_Tool
             return operationNumber;
         }
 
-        public void TraverseDown(int startRow, int startColumn, ExcelWorksheet _ws)
+        public List<ExcelRangeBase> TraverseDown(int startRow, int startColumn, ExcelWorksheet _ws)
         {
+            var result = new List<ExcelRangeBase>();
             DownQueue.Enqueue((startRow, startColumn));
 
             while (DownQueue.Count > 0)
             {
                 var node = DownQueue.Dequeue();
                 int totalRows = _ws.Dimension.End.Row;
-                ProcessDown(node.row, node.col, _ws, totalRows);
+                ProcessDown(node.row, node.col, _ws, totalRows, result);
             }
+            return result;
         }
 
         // =======================================================
         //  MAIN ENTRY POINT
         // =======================================================
-        public void TraverseUp(int startRow, int startColumn, ExcelWorksheet _ws)
+        public List<ExcelRangeBase> TraverseUp(int startRow, int startColumn, ExcelWorksheet _ws)
         {
+            var result = new List<ExcelRangeBase>();
             UpQueue.Enqueue((startRow, startColumn));
 
             while (UpQueue.Count > 0)
             {
                 var node = UpQueue.Dequeue();
-                ProcessUp(node.row, node.col, _ws);
+                ProcessUp(node.row, node.col, _ws, result);
             }
+            return result;
         }
 
         // =======================================================
         //  UP NAVIGATION
         // =======================================================
-        private void ProcessUp(int row, int column, ExcelWorksheet _ws)
+        private void ProcessUp(int row, int column, ExcelWorksheet _ws, List<ExcelRangeBase> result)
         {
             int r = row;
 
@@ -2755,7 +2755,7 @@ namespace LChart_Comparison_Tool
                     ExcelRangeBase parent;
                     if (TryGetImmediateMergeParent(leftCell, _ws, out parent))
                     {
-                        ParentMergedCells.Add(parent);
+                        result.Add(parent);
                         return;
                     }
                 }
@@ -2994,7 +2994,7 @@ namespace LChart_Comparison_Tool
         // =======================================================
         //  UP NAVIGATION
         // =======================================================
-        private void ProcessDown(int row, int column, ExcelWorksheet _ws, int worksheetRowsCount)
+        private void ProcessDown(int row, int column, ExcelWorksheet _ws, int worksheetRowsCount, List<ExcelRangeBase> result)
         {
             int r = row;
 
@@ -3024,7 +3024,7 @@ namespace LChart_Comparison_Tool
                     ExcelRangeBase parent;
                     if (TryGetImmediateMergeParentDown(leftCell, _ws, out parent))
                     {
-                        ParentMergedCells.Add(parent);
+                        result.Add(parent);
                         return;
                     }
                 }
@@ -3193,8 +3193,8 @@ namespace LChart_Comparison_Tool
         /// <param name="moduleName">Module name from the group</param>
         /// <param name="direction">Direction from the group</param>
         /// <param name="startRow">Row to start searching from (usually 2)</param>
-        private static void UpdateExcelForBlock(ExcelWorksheet ws, BlockItem block, 
-            string moduleName, string direction, ref int lastRow, int lastCol)
+        private static void UpdateExcelForBlock(ExcelWorksheet ws, BlockItem block,
+            string moduleName, ref int lastRow, int lastCol)
         {
             string blockNumber = block.BlockNumber?.Trim();
             var parents = block.Parents;
@@ -3222,7 +3222,7 @@ namespace LChart_Comparison_Tool
 
             if (row == -1)
             {
-                Console.WriteLine($"Row not found for Block={blockNumber}, Module={moduleName}, Direction={direction}");
+                Console.WriteLine($"Row not found for Block={blockNumber}, Module={moduleName}");
                 return;
             }
 
@@ -3261,6 +3261,38 @@ namespace LChart_Comparison_Tool
 
             // Update lastRow because we inserted rows
             lastRow += extraRows;
+        }
+
+        private bool SearchBlockInSheet(ExcelWorksheet ws, string blockNumber,
+                                out int foundAtRow, out int foundAtColumn)
+        {
+            foundAtRow = 0;
+            foundAtColumn = 0;
+
+            if (ws?.Dimension == null)
+                return false;
+
+            int lastRow = ws.Dimension.End.Row;
+            int lastCol = ws.Dimension.End.Column;
+
+            for (int r = 1; r <= lastRow; r++)
+            {
+                for (int c = 1; c <= lastCol; c++)
+                {
+                    string text = ws.Cells[r, c].Text?
+                        .Replace("\r", "")
+                        .Replace("\n", "")
+                        .Trim();
+
+                    if (string.Equals(text, blockNumber, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foundAtRow = r;
+                        foundAtColumn = c;
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }
