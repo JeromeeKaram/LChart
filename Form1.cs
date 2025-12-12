@@ -26,6 +26,8 @@ namespace LChart_Comparison_Tool
         const string SheetLChartNovel = "L-Chart(NOVEL)";
         const string SheetLChart = "L-Chart";
         const string SheetManual = "Manual Sheet";
+        const string SheetLChartHPTON = "L-CHART(POST0157)";
+        const string HPTON = "HPT ON";
 
         public List<ExcelRangeBase> ParentMergedCells = new();
 
@@ -2494,6 +2496,19 @@ namespace LChart_Comparison_Tool
                   .Select(ws => ws.Name)
                   .ToList();
 
+                        if (group.ModuleName.IndexOf(HPTON, StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            workSheetLChart = package.Workbook.Worksheets[SheetLChartHPTON];
+                        }
+                        else
+                        {
+                            workSheetLChart = package.Workbook.Worksheets[SheetLChart];
+                        }
+
+                        workSheetNovel = sheetNamesList.Contains(SheetLChartNovel)
+                           ? package.Workbook.Worksheets[SheetLChartNovel]
+                           : null;
+
                         foreach (var block in group.Blocks)
                         {
                             if (string.IsNullOrEmpty(block.BlockNumber))
@@ -2502,13 +2517,6 @@ namespace LChart_Comparison_Tool
                             }
 
                             bool isNovelBlock = block.BlockNumber.IndexOf("NOVEL", StringComparison.OrdinalIgnoreCase) >= 0;
-
-                            // Sheet references
-                            workSheetLChart = package.Workbook.Worksheets[SheetLChart];
-
-                            workSheetNovel = sheetNamesList.Contains(SheetLChartNovel)
-                               ? package.Workbook.Worksheets[SheetLChartNovel]
-                               : null;
 
                             bool found = false;
                             int foundAtRow = 0;
@@ -2565,7 +2573,7 @@ namespace LChart_Comparison_Tool
                                     var downLineStartsAtRow = foundAtRow + 4;
                                     var downLineStartsAtColumn = foundAtColumn - 2;
                                     var parentBlocks = TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, workSheetToTraverse);
-                                    
+
                                     foreach (var p in parentBlocks)
                                     {
                                         var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
@@ -2582,7 +2590,7 @@ namespace LChart_Comparison_Tool
                                     var upLineStartsAtRow = foundAtRow - 1;
                                     var upLineStartsAtColumn = foundAtColumn - 2;
                                     var parentBlocks = TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, workSheetToTraverse);
-                                    
+
                                     foreach (var p in parentBlocks)
                                     {
                                         var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
