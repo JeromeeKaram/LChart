@@ -2654,6 +2654,7 @@ namespace LChart_Comparison_Tool
             Console.WriteLine($"Start Time : {startTime}");
             Console.WriteLine($"End Time   : {endTime}");
             Console.WriteLine($"Total Time : {endTime - startTime}");
+            MessageBox.Show($"Finished L-Chart processing in {endTime - startTime}");
         }
 
         private bool FilesAreSearchCompatible(string module)
