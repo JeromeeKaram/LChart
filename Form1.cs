@@ -2471,6 +2471,8 @@ namespace LChart_Comparison_Tool
                 {
                     if (!FilesAreSearchCompatible(group.ModuleName)) continue;
 
+                    //if (group.ModuleName!= "CIC OFF") continue;
+
                     ExcelWorkbook workbookModule = null;
                     ExcelWorksheet workSheetLChart = null;
                     ExcelWorksheet workSheetManual = null;
@@ -2593,13 +2595,46 @@ namespace LChart_Comparison_Tool
 
                                     foreach (var p in parentBlocks)
                                     {
-                                        var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
-                                        // ⭐ Add the ParentInfo
-                                        block.Parents.Add(new ParentInfo
+                                        var leftCell = workSheetToTraverse.Cells[p.Start.Row, p.Start.Column - 1];
+
+                                        string mergedCellText = null;
+
+                                        if (leftCell.Merge)
                                         {
-                                            ParentNumber = p.Text,
-                                            ParentOperationNumber = operationNumber
-                                        });
+                                            // Get merged range address (e.g. "A3:A6")
+                                            var mergedAddress = workSheetToTraverse.MergedCells[leftCell.Start.Row, leftCell.Start.Column];
+
+                                            // Get the merged range
+                                            var mergedRange = workSheetToTraverse.Cells[mergedAddress];
+
+                                            // TOP-LEFT cell of merged range
+                                            var topLeftCell = workSheetToTraverse.Cells[
+                                                mergedRange.Start.Row,
+                                                mergedRange.Start.Column
+                                            ];
+
+                                            mergedCellText = topLeftCell.Value?.ToString().Trim();
+
+                                            string operationNumber;
+
+                                            if (string.Equals(mergedCellText, "Dummy", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                operationNumber = "Dummy";
+                                            }
+                                            else
+                                            {
+                                                operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
+                                            }
+
+                                            //var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
+                                            // ⭐ Add the ParentInfo
+                                            block.Parents.Add(new ParentInfo
+                                            {
+                                                ParentNumber = p.Text,
+                                                ParentOperationNumber = operationNumber
+                                            });
+
+                                        }
                                     }
                                 }
                             }
