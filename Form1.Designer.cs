@@ -50,7 +50,7 @@ namespace LChart_Comparison_Tool
             this.btnParentChild = new System.Windows.Forms.Button();
             this.label16 = new System.Windows.Forms.Label();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.txtPortalFilePath = new System.Windows.Forms.TextBox();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.InputBrowse = new System.Windows.Forms.Button();
             this.InputPath = new System.Windows.Forms.TextBox();
@@ -227,7 +227,7 @@ namespace LChart_Comparison_Tool
             this.LChart_Comparison.Controls.Add(this.btnParentChild);
             this.LChart_Comparison.Controls.Add(this.label16);
             this.LChart_Comparison.Controls.Add(this.progressBar1);
-            this.LChart_Comparison.Controls.Add(this.textBox1);
+            this.LChart_Comparison.Controls.Add(this.txtPortalFilePath);
             this.LChart_Comparison.Controls.Add(this.comboBox1);
             this.LChart_Comparison.Controls.Add(this.InputBrowse);
             this.LChart_Comparison.Controls.Add(this.InputPath);
@@ -319,18 +319,18 @@ namespace LChart_Comparison_Tool
             this.progressBar1.Size = new System.Drawing.Size(781, 28);
             this.progressBar1.TabIndex = 34;
             // 
-            // textBox1
+            // txtPortalFilePath
             // 
-            this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.txtPortalFilePath.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(85)))), ((int)(((byte)(166)))), ((int)(((byte)(215)))));
-            this.textBox1.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.textBox1.Location = new System.Drawing.Point(194, 103);
-            this.textBox1.Multiline = true;
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(484, 50);
-            this.textBox1.TabIndex = 33;
-            this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
+            this.txtPortalFilePath.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(85)))), ((int)(((byte)(166)))), ((int)(((byte)(215)))));
+            this.txtPortalFilePath.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.txtPortalFilePath.Location = new System.Drawing.Point(194, 103);
+            this.txtPortalFilePath.Multiline = true;
+            this.txtPortalFilePath.Name = "txtPortalFilePath";
+            this.txtPortalFilePath.Size = new System.Drawing.Size(484, 50);
+            this.txtPortalFilePath.TabIndex = 33;
+            this.txtPortalFilePath.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
             // 
             // comboBox1
             // 
@@ -650,7 +650,7 @@ namespace LChart_Comparison_Tool
         private System.Windows.Forms.Label label15;
         private System.Windows.Forms.ComboBox comboBox1;
         private System.ComponentModel.BackgroundWorker backgroundWorker1;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox txtPortalFilePath;
         private ProgressBar progressBar1;
         private Label label16;
         private Label label13;

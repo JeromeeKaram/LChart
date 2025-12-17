@@ -157,7 +157,7 @@ namespace LChart_Comparison_Tool
                 {
                     string selectedPath = dialog.FileName;
                     //MessageBox.Show("Selected Folder: " + selectedPath);
-                    textBox1.Text = selectedPath;
+                    txtPortalFilePath.Text = selectedPath;
                 }
             }
             else if (label12.Text == "LChart Portal File :")
@@ -169,7 +169,7 @@ namespace LChart_Comparison_Tool
 
                     if (fileDlg.ShowDialog() == DialogResult.OK)
                     {
-                        textBox1.Text = fileDlg.FileName;
+                        txtPortalFilePath.Text = fileDlg.FileName;
                     }
                 }
             }
@@ -255,7 +255,7 @@ namespace LChart_Comparison_Tool
         }
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
-            string path = textBox1.Text.Trim();
+            string path = txtPortalFilePath.Text.Trim();
             string selectedName = comboBox1.Text.Trim();
 
             if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(selectedName))
@@ -294,7 +294,7 @@ namespace LChart_Comparison_Tool
         {
             try
             {
-                string portalPath = textBox1.Text.Trim(); string inputFolder = InputPath.Text.Trim(); string excelName = comboBox1.Text.Trim();
+                string portalPath = txtPortalFilePath.Text.Trim(); string inputFolder = InputPath.Text.Trim(); string excelName = comboBox1.Text.Trim();
 
                 if (string.IsNullOrWhiteSpace(inputFolder) && string.IsNullOrWhiteSpace(portalPath))
                 {
@@ -302,7 +302,7 @@ namespace LChart_Comparison_Tool
                                     "Missing Path",
                                     MessageBoxButtons.OK,
                                     MessageBoxIcon.Warning);
-                    textBox1.Focus();
+                    txtPortalFilePath.Focus();
                     return;
                 }
                 if (string.IsNullOrWhiteSpace(inputFolder))
@@ -331,7 +331,7 @@ namespace LChart_Comparison_Tool
                                     "Missing Path",
                                     MessageBoxButtons.OK,
                                     MessageBoxIcon.Warning);
-                    textBox1.Focus();
+                    txtPortalFilePath.Focus();
                     return;
                 }
 
@@ -341,7 +341,7 @@ namespace LChart_Comparison_Tool
                                     "Invalid Path",
                                     MessageBoxButtons.OK,
                                     MessageBoxIcon.Warning);
-                    textBox1.Focus();
+                    txtPortalFilePath.Focus();
                     return;
                 }
                 this.Cursor = Cursors.WaitCursor;
@@ -2398,7 +2398,7 @@ namespace LChart_Comparison_Tool
                 return;
             }
 
-            if (string.IsNullOrEmpty(textBox1.Text))
+            if (string.IsNullOrEmpty(txtPortalFilePath.Text))
             {
                 MessageBox.Show("Select Parent Child master file");
                 return;
@@ -2410,7 +2410,7 @@ namespace LChart_Comparison_Tool
                 return;
             }
 
-            var sourceParentChildMaster = textBox1.Text;//"D:\\iHi\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx";
+            var sourceParentChildMaster = txtPortalFilePath.Text;//"D:\\iHi\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx";
 
             var groupedList = new List<ItemGroup>();
             using (var package = new ExcelPackage(new FileInfo(sourceParentChildMaster)))
