@@ -2410,308 +2410,14 @@ namespace LChart_Comparison_Tool
                 return;
             }
 
-            var sourceParentChildMaster = textBox1.Text;//"D:\\iHi\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx";
+            //var sourceParentChildMaster = textBox1.Text;//"D:\\iHi\\LChart Inputs\\Batch-Deliverables\\Parent and Child Master.xlsx";
 
-            var groupedList = new List<ItemGroup>();
-            using (var package = new ExcelPackage(new FileInfo(sourceParentChildMaster)))
-            {
-                // Get the first worksheet
-                var worksheetParentChildMaster = package.Workbook.Worksheets[1];
+            var groupedList = LoadParentChildMaster(textBox1.Text);
 
-                // Find total rows and columns
-                int worksheetParentChildMasterRowCount = worksheetParentChildMaster.Dimension.Rows;
-                int worksheetParentChildMasterColumnCount = worksheetParentChildMaster.Dimension.Columns;
+            ProcessModuleFiles(groupedList, InputPath.Text);
 
-                Console.WriteLine($"Rows: {worksheetParentChildMasterRowCount}, Columns: {worksheetParentChildMasterColumnCount}");
+            GenerateOutputExcel(groupedList, textBox1.Text, outputFolder);
 
-                //Create new excel file
-                if (File.Exists(outputFolder))
-                {
-                    File.Delete(outputFolder); // delete old file
-                }
-
-                try
-                {
-                    var rows = new List<ExcelRow>();
-
-                    for (int referenceRow = 7; referenceRow <= worksheetParentChildMasterRowCount; referenceRow++)
-                    {
-                        rows.Add(new ExcelRow
-                        {
-                            BlockNumber = Convert.ToString(worksheetParentChildMaster.Cells[referenceRow, 1].Text),
-                            Module = Convert.ToString(worksheetParentChildMaster.Cells[referenceRow, 3].Text),
-                            Direction = Convert.ToString(worksheetParentChildMaster.Cells[referenceRow, 4].Text)
-                        });
-                    }
-
-                    groupedList = rows
-    .GroupBy(r => new { r.Module, r.Direction })
-    .Select(g => new ItemGroup
-    {
-        ModuleName = $"{g.Key.Module} {g.Key.Direction}",
-        Direction = g.Key.Direction,
-        Blocks = g.Select(x => new BlockItem
-        {
-            BlockNumber = x.BlockNumber
-        }).ToList()
-    })
-    .ToList();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-            }
-
-            string[] files = Directory.GetFiles(InputPath.Text);
-
-            try
-            {
-                foreach (var group in groupedList)
-                {
-                    if (!FilesAreSearchCompatible(group.ModuleName)) continue;
-
-                    //if (group.ModuleName!= "CIC OFF") continue;
-
-                    ExcelWorkbook workbookModule = null;
-                    ExcelWorksheet workSheetLChart = null;
-                    ExcelWorksheet workSheetManual = null;
-                    ExcelWorksheet workSheetNovel = null;
-                    ExcelWorksheet workSheetToTraverse = null;
-
-                    var matchedFile = files
-                   .Where(f => Path.GetFileName(f).StartsWith($"{group.ModuleName}", StringComparison.OrdinalIgnoreCase))
-                   .FirstOrDefault();
-
-                    if (matchedFile == null)
-                    {
-                        Console.WriteLine($"❌ No file found for: {group.ModuleName}");
-                        continue;  // ← DO NOT STOP THE LOOP
-                    }
-
-                    try
-                    {
-                        var package = new ExcelPackage(new FileInfo(matchedFile));
-                        workbookModule = package.Workbook;
-
-                        var sheetNamesList = package.Workbook.Worksheets
-                  .Select(ws => ws.Name)
-                  .ToList();
-
-                        if (group.ModuleName.IndexOf(HPTON, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            workSheetLChart = package.Workbook.Worksheets[SheetLChartHPTON];
-                        }
-                        else
-                        {
-                            workSheetLChart = package.Workbook.Worksheets[SheetLChart];
-                        }
-
-                        workSheetNovel = sheetNamesList.Contains(SheetLChartNovel)
-                           ? package.Workbook.Worksheets[SheetLChartNovel]
-                           : null;
-
-                        foreach (var block in group.Blocks)
-                        {
-                            if (string.IsNullOrEmpty(block.BlockNumber))
-                            {
-                                continue;
-                            }
-
-                            bool isNovelBlock = block.BlockNumber.IndexOf("NOVEL", StringComparison.OrdinalIgnoreCase) >= 0;
-
-                            bool found = false;
-                            int foundAtRow = 0;
-                            int foundAtColumn = 0;
-
-                            // ============================================================
-                            // CASE 1: NOVEL BLOCK → Search ONLY Novel sheet
-                            // ============================================================
-                            if (isNovelBlock)
-                            {
-                                if (workSheetNovel == null)
-                                    continue; // skip novel blocks with no novel sheet
-
-                                if (SearchBlockInSheet(workSheetNovel, block.BlockNumber, out foundAtRow, out foundAtColumn))
-                                {
-                                    found = true;
-                                    workSheetToTraverse = workSheetNovel;
-                                }
-                                else
-                                {
-                                    continue; // not found
-                                }
-                            }
-                            else
-                            {
-                                // ============================================================
-                                // CASE 2: NORMAL BLOCK → Search L-Chart first, then Novel
-                                // ============================================================
-
-                                // Try main sheet
-                                if (SearchBlockInSheet(workSheetLChart, block.BlockNumber, out foundAtRow, out foundAtColumn))
-                                {
-                                    found = true;
-                                    workSheetToTraverse = workSheetLChart;
-                                }
-                                else if (workSheetNovel != null &&
-                                         SearchBlockInSheet(workSheetNovel, block.BlockNumber, out foundAtRow, out foundAtColumn))
-                                {
-                                    found = true;
-                                    workSheetToTraverse = workSheetNovel;
-                                }
-                                else
-                                {
-                                    continue; // not found anywhere
-                                }
-                            }
-
-                            if (found)
-                            {
-                                workSheetManual = workbookModule.Worksheets[SheetManual];
-
-                                if (group.Direction == "ON")
-                                {
-                                    var downLineStartsAtRow = foundAtRow + 4;
-                                    var downLineStartsAtColumn = foundAtColumn - 2;
-                                    var parentBlocks = TraverseDown(downLineStartsAtRow, downLineStartsAtColumn, workSheetToTraverse);
-
-                                    foreach (var p in parentBlocks)
-                                    {
-                                        var leftCell = workSheetToTraverse.Cells[p.Start.Row, p.Start.Column - 1];
-
-                                        string mergedCellText = null;
-
-                                        if (leftCell.Merge)
-                                        {
-                                            // Get merged range address (e.g. "A3:A6")
-                                            var mergedAddress = workSheetToTraverse.MergedCells[leftCell.Start.Row, leftCell.Start.Column];
-
-                                            // Get the merged range
-                                            var mergedRange = workSheetToTraverse.Cells[mergedAddress];
-
-                                            // TOP-LEFT cell of merged range
-                                            var topLeftCell = workSheetToTraverse.Cells[
-                                                mergedRange.Start.Row,
-                                                mergedRange.Start.Column
-                                            ];
-
-                                            mergedCellText = topLeftCell.Value?.ToString().Trim();
-
-                                            bool isDummy = false;
-
-                                            if (string.Equals(mergedCellText, "Dummy", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                isDummy = true;
-                                            }
-
-                                            var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text, isDummy);
-
-                                            // ⭐ Add the ParentInfo
-                                            block.Parents.Add(new ParentInfo
-                                            {
-                                                ParentNumber = p.Text,
-                                                ParentOperationNumber = operationNumber
-                                            });
-
-                                        }
-                                    }
-                                }
-                                else if (group.Direction == "OFF")
-                                {
-                                    var upLineStartsAtRow = foundAtRow - 1;
-                                    var upLineStartsAtColumn = foundAtColumn - 2;
-                                    var parentBlocks = TraverseUp(upLineStartsAtRow, upLineStartsAtColumn, workSheetToTraverse);
-
-                                    foreach (var p in parentBlocks)
-                                    {
-                                        var leftCell = workSheetToTraverse.Cells[p.Start.Row, p.Start.Column - 1];
-
-                                        string mergedCellText = null;
-
-                                        if (leftCell.Merge)
-                                        {
-                                            // Get merged range address (e.g. "A3:A6")
-                                            var mergedAddress = workSheetToTraverse.MergedCells[leftCell.Start.Row, leftCell.Start.Column];
-
-                                            // Get the merged range
-                                            var mergedRange = workSheetToTraverse.Cells[mergedAddress];
-
-                                            // TOP-LEFT cell of merged range
-                                            var topLeftCell = workSheetToTraverse.Cells[
-                                                mergedRange.Start.Row,
-                                                mergedRange.Start.Column
-                                            ];
-
-                                            mergedCellText = topLeftCell.Value?.ToString().Trim();
-
-                                            bool isDummy =false;
-
-                                            if (string.Equals(mergedCellText, "Dummy", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                isDummy = true;
-                                            }
-                                                
-                                            var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text, isDummy);
-
-                                            // ⭐ Add the ParentInfo
-                                            block.Parents.Add(new ParentInfo
-                                            {
-                                                ParentNumber = p.Text,
-                                                ParentOperationNumber = operationNumber
-                                            });
-
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("ERROR: " + ex.Message);
-                    }
-                    finally
-                    {
-                    }
-                }
-
-                // After processing all groups, create output Excel file and update its H Column (Parent Operation No)
-
-                string copiedFile = Path.Combine(outputFolder, "newFile.xlsx");
-
-                // Delete if already exists
-                if (File.Exists(copiedFile))
-                {
-                    File.Delete(copiedFile);
-                }
-
-                // Copy the new file
-                File.Copy(sourceParentChildMaster, copiedFile);
-
-                using (var package = new ExcelPackage(new FileInfo(copiedFile)))
-                {
-                    // Get the first worksheet
-                    var worksheetOfCopiedFile = package.Workbook.Worksheets[1];
-                    int lastRow = worksheetOfCopiedFile.Dimension.End.Row;
-                    int lastCol = worksheetOfCopiedFile.Dimension.End.Column;
-
-                    foreach (var group in groupedList)
-                    {
-                        var moduleName = group.ModuleName;
-
-                        foreach (var block in group.Blocks)
-                        {
-                            UpdateExcelForBlock(worksheetOfCopiedFile, block, moduleName, ref lastRow, lastCol);
-                        }
-                    }
-                    package.Save();
-                }
-                // end
-            }
-            finally
-            {
-            }
             var endTime = DateTime.Now;
             Console.WriteLine($"Start Time : {startTime}");
             Console.WriteLine($"End Time   : {endTime}");
@@ -2757,11 +2463,11 @@ namespace LChart_Comparison_Tool
 
             string operationNumber = "";
 
-            if (isDummy) 
+            if (isDummy)
             {
                 operationNumber = "Dummy";
-            } 
-                
+            }
+
             if (operationNumberFound)
             {
                 operationNumber = manualWorkSheet.Cells[operationNumberfoundAtRow, 7].Text;
@@ -3371,5 +3077,259 @@ namespace LChart_Comparison_Tool
             }
             return false;
         }
+
+        private void PopulateOperationNumber(
+    IEnumerable<ExcelRangeBase> parentBlocks,
+    ExcelWorksheet workSheetToTraverse,
+    ExcelWorksheet workSheetManual,
+    BlockItem block)
+        {
+            foreach (var p in parentBlocks)
+            {
+                var leftCell = workSheetToTraverse.Cells[p.Start.Row, p.Start.Column - 1];
+                if (!leftCell.Merge)
+                    continue;
+
+                var mergedAddress =
+                    workSheetToTraverse.MergedCells[leftCell.Start.Row, leftCell.Start.Column];
+
+                var mergedRange = workSheetToTraverse.Cells[mergedAddress];
+
+                var topLeftCell = workSheetToTraverse.Cells[
+                    mergedRange.Start.Row,
+                    mergedRange.Start.Column
+                ];
+
+                var mergedCellText = topLeftCell.Value?.ToString().Trim();
+
+                bool isDummy = string.Equals(
+                    mergedCellText,
+                    "Dummy",
+                    StringComparison.OrdinalIgnoreCase
+                );
+
+                var operationNumber =
+                    ReadOperationNoFromManualSheet(workSheetManual, p.Text, isDummy);
+
+                block.Parents.Add(new ParentInfo
+                {
+                    ParentNumber = p.Text,
+                    ParentOperationNumber = operationNumber
+                });
+            }
+        }
+
+        private bool TryFindBlock(
+    string blockNumber,
+    bool isNovelBlock,
+    ExcelWorksheet workSheetLChart,
+    ExcelWorksheet workSheetNovel,
+    out ExcelWorksheet workSheetToTraverse,
+    out int foundAtRow,
+    out int foundAtColumn)
+        {
+            workSheetToTraverse = null;
+            foundAtRow = 0;
+            foundAtColumn = 0;
+
+            if (isNovelBlock)
+            {
+                return workSheetNovel != null &&
+                       SearchBlockInSheet(workSheetNovel, blockNumber, out foundAtRow, out foundAtColumn)
+                       && (workSheetToTraverse = workSheetNovel) != null;
+            }
+
+            if (SearchBlockInSheet(workSheetLChart, blockNumber, out foundAtRow, out foundAtColumn))
+            {
+                workSheetToTraverse = workSheetLChart;
+                return true;
+            }
+
+            if (workSheetNovel != null &&
+                SearchBlockInSheet(workSheetNovel, blockNumber, out foundAtRow, out foundAtColumn))
+            {
+                workSheetToTraverse = workSheetNovel;
+                return true;
+            }
+
+            return false;
+        }
+
+        private List<ItemGroup> LoadParentChildMaster(string masterFilePath)
+        {
+            var groupedList = new List<ItemGroup>();
+
+            using var package = new ExcelPackage(new FileInfo(masterFilePath));
+            var worksheet = package.Workbook.Worksheets[1];
+            int rowCount = worksheet.Dimension.Rows;
+
+            var rows = new List<ExcelRow>();
+
+            for (int row = 7; row <= rowCount; row++)
+            {
+                rows.Add(new ExcelRow
+                {
+                    BlockNumber = worksheet.Cells[row, 1].Text,
+                    Module = worksheet.Cells[row, 3].Text,
+                    Direction = worksheet.Cells[row, 4].Text
+                });
+            }
+
+            return rows
+                .GroupBy(r => new { r.Module, r.Direction })
+                .Select(g => new ItemGroup
+                {
+                    ModuleName = $"{g.Key.Module} {g.Key.Direction}",
+                    Direction = g.Key.Direction,
+                    Blocks = g.Select(x => new BlockItem
+                    {
+                        BlockNumber = x.BlockNumber
+                    }).ToList()
+                })
+                .ToList();
+        }
+
+        private void ProcessModuleFiles(List<ItemGroup> groupedList, string inputPath)
+        {
+            var files = Directory.GetFiles(inputPath);
+
+            foreach (var group in groupedList)
+            {
+                if (!FilesAreSearchCompatible(group.ModuleName))
+                    continue;
+
+                var matchedFile = FindModuleFile(files, group.ModuleName);
+                if (matchedFile == null)
+                    continue;
+
+                ProcessSingleModuleFile(matchedFile, group);
+            }
+        }
+
+        private string FindModuleFile(string[] files, string moduleName)
+        {
+            return files.FirstOrDefault(f =>
+                Path.GetFileName(f).StartsWith(moduleName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void ProcessSingleModuleFile(string filePath, ItemGroup group)
+        {
+            using var package = new ExcelPackage(new FileInfo(filePath));
+            var workbook = package.Workbook;
+
+            var workSheetLChart = ResolveLChartSheet(workbook, group.ModuleName);
+            var workSheetNovel = ResolveNovelSheet(workbook);
+
+            foreach (var block in group.Blocks)
+            {
+                ProcessBlock(
+                    block,
+                    group.Direction,
+                    workbook,
+                    workSheetLChart,
+                    workSheetNovel
+                );
+            }
+        }
+
+        private ExcelWorksheet ResolveLChartSheet(
+    ExcelWorkbook workbook,
+    string moduleName)
+        {
+            if (moduleName.IndexOf(HPTON, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return workbook.Worksheets[SheetLChartHPTON];
+            }
+
+            return workbook.Worksheets[SheetLChart];
+        }
+        private ExcelWorksheet ResolveNovelSheet(ExcelWorkbook workbook)
+        {
+            var sheetNames = workbook.Worksheets
+                .Select(ws => ws.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return sheetNames.Contains(SheetLChartNovel)
+                ? workbook.Worksheets[SheetLChartNovel]
+                : null;
+        }
+
+        private void ProcessBlock(
+    BlockItem block,
+    string direction,
+    ExcelWorkbook workbook,
+    ExcelWorksheet workSheetLChart,
+    ExcelWorksheet workSheetNovel)
+        {
+            if (string.IsNullOrEmpty(block.BlockNumber))
+                return;
+
+            bool isNovelBlock =
+                block.BlockNumber.IndexOf("NOVEL", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (!TryFindBlock(
+                    block.BlockNumber,
+                    isNovelBlock,
+                    workSheetLChart,
+                    workSheetNovel,
+                    out var workSheetToTraverse,
+                    out int foundAtRow,
+                    out int foundAtColumn))
+                return;
+
+            var workSheetManual = workbook.Worksheets[SheetManual];
+
+            int startColumn = foundAtColumn - 2;
+
+            var parentBlocks = direction switch
+            {
+                "ON" => TraverseDown(foundAtRow + 4, startColumn, workSheetToTraverse),
+                "OFF" => TraverseUp(foundAtRow - 1, startColumn, workSheetToTraverse),
+                _ => Enumerable.Empty<ExcelRangeBase>()
+            };
+
+            PopulateOperationNumber(
+                parentBlocks,
+                workSheetToTraverse,
+                workSheetManual,
+                block
+            );
+        }
+
+        private void GenerateOutputExcel(
+    List<ItemGroup> groupedList,
+    string sourceFile,
+    string outputFolder)
+        {
+            string outputFile = Path.Combine(outputFolder, "newFile.xlsx");
+
+            if (File.Exists(outputFile))
+                File.Delete(outputFile);
+
+            File.Copy(sourceFile, outputFile);
+
+            using var package = new ExcelPackage(new FileInfo(outputFile));
+            var worksheet = package.Workbook.Worksheets[1];
+
+            int lastRow = worksheet.Dimension.End.Row;
+            int lastCol = worksheet.Dimension.End.Column;
+
+            foreach (var group in groupedList)
+            {
+                foreach (var block in group.Blocks)
+                {
+                    UpdateExcelForBlock(
+                        worksheet,
+                        block,
+                        group.ModuleName,
+                        ref lastRow,
+                        lastCol
+                    );
+                }
+            }
+
+            package.Save();
+        }
+
     }
 }
