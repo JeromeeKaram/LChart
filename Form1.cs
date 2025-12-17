@@ -2578,13 +2578,43 @@ namespace LChart_Comparison_Tool
 
                                     foreach (var p in parentBlocks)
                                     {
-                                        var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
-                                        // ⭐ Add the ParentInfo
-                                        block.Parents.Add(new ParentInfo
+                                        var leftCell = workSheetToTraverse.Cells[p.Start.Row, p.Start.Column - 1];
+
+                                        string mergedCellText = null;
+
+                                        if (leftCell.Merge)
                                         {
-                                            ParentNumber = p.Text,
-                                            ParentOperationNumber = operationNumber
-                                        });
+                                            // Get merged range address (e.g. "A3:A6")
+                                            var mergedAddress = workSheetToTraverse.MergedCells[leftCell.Start.Row, leftCell.Start.Column];
+
+                                            // Get the merged range
+                                            var mergedRange = workSheetToTraverse.Cells[mergedAddress];
+
+                                            // TOP-LEFT cell of merged range
+                                            var topLeftCell = workSheetToTraverse.Cells[
+                                                mergedRange.Start.Row,
+                                                mergedRange.Start.Column
+                                            ];
+
+                                            mergedCellText = topLeftCell.Value?.ToString().Trim();
+
+                                            bool isDummy = false;
+
+                                            if (string.Equals(mergedCellText, "Dummy", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                isDummy = true;
+                                            }
+
+                                            var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text, isDummy);
+
+                                            // ⭐ Add the ParentInfo
+                                            block.Parents.Add(new ParentInfo
+                                            {
+                                                ParentNumber = p.Text,
+                                                ParentOperationNumber = operationNumber
+                                            });
+
+                                        }
                                     }
                                 }
                                 else if (group.Direction == "OFF")
@@ -2615,18 +2645,15 @@ namespace LChart_Comparison_Tool
 
                                             mergedCellText = topLeftCell.Value?.ToString().Trim();
 
-                                            string operationNumber;
+                                            bool isDummy =false;
 
                                             if (string.Equals(mergedCellText, "Dummy", StringComparison.OrdinalIgnoreCase))
                                             {
-                                                operationNumber = "Dummy";
+                                                isDummy = true;
                                             }
-                                            else
-                                            {
-                                                operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
-                                            }
+                                                
+                                            var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text, isDummy);
 
-                                            //var operationNumber = ReadOperationNoFromManualSheet(workSheetManual, p.Text);
                                             // ⭐ Add the ParentInfo
                                             block.Parents.Add(new ParentInfo
                                             {
@@ -2701,7 +2728,7 @@ namespace LChart_Comparison_Tool
             return true;
         }
 
-        private string ReadOperationNoFromManualSheet(ExcelWorksheet manualWorkSheet, string parent)
+        private string ReadOperationNoFromManualSheet(ExcelWorksheet manualWorkSheet, string parent, bool isDummy)
         {
             bool operationNumberFound = false;
             int operationNumberfoundAtRow = 0;
@@ -2729,6 +2756,12 @@ namespace LChart_Comparison_Tool
             }
 
             string operationNumber = "";
+
+            if (isDummy) 
+            {
+                operationNumber = "Dummy";
+            } 
+                
             if (operationNumberFound)
             {
                 operationNumber = manualWorkSheet.Cells[operationNumberfoundAtRow, 7].Text;
